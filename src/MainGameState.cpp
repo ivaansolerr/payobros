@@ -1,107 +1,118 @@
-#include <MainGameState.hpp>
+#include "MainGameState.hpp"
 #include <iostream>
 
-extern "C" {
-    #include <raylib.h>
-}
-
 MainGameState::MainGameState()
+    : entered_key(0),
+      velocityY(0.0f),
+      isGrounded(false),
+      inputDirectionX(0.0f),
+      jumpRequested(false),
+      restartRequested(false),
+      gameOver(false),
+      floorHeight(180.0f),
+      groundY(0.0f)
 {
-
+    init();
 }
 
 void MainGameState::init()
 {
+    const int screenWidth = GetScreenWidth();
+    const int screenHeight = GetScreenHeight();
 
+    floorHeight = 180.0f;
+    groundY = screenHeight - floorHeight;
+
+    groundLeft  = { 0.0f, groundY, 110.0f, floorHeight };
+    groundRight = { 180.0f, groundY, screenWidth - 180.0f, floorHeight };
+
+    player = { 30.0f, groundY - 50.0f, 40.0f, 40.0f };
+    enemy  = { 220.0f, groundY - 40.0f, 40.0f, 40.0f };
+
+    velocityY = 0.0f;
+    isGrounded = false;
+    gameOver = false;
 }
 
 void MainGameState::handleInput()
 {
+    inputDirectionX = 0.0f;
+    jumpRequested = false;
+    restartRequested = false;
 
+    // Lee la última tecla si necesitas registrar entered_key
+    entered_key = static_cast<char>(GetCharPressed());
+
+    if (!gameOver) {
+        if (IsKeyDown(KEY_A)) inputDirectionX -= 1.0f;
+        if (IsKeyDown(KEY_D)) inputDirectionX += 1.0f;
+
+        if (IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_W)) {
+            jumpRequested = true;
+        }
+    } else {
+        if (IsKeyPressed(KEY_R)) {
+            restartRequested = true;
+        }
+    }
 }
 
 void MainGameState::update(float deltaTime)
 {
-
-}
-
-void MainGameState::render()
-{
     const int screenWidth = GetScreenWidth();
     const int screenHeight = GetScreenHeight();
 
-    const float floorHeight = 180.0f;
-    const float groundY = screenHeight - floorHeight;
-
-    // suelo temporal (antes de cargarlo en el archivo) con un hueco para el gameover
-    const Rectangle groundLeft  = { 0.0f, groundY, 110.0f, floorHeight };
-    const Rectangle groundRight = { 180.0f, groundY, screenWidth - 180.0f, floorHeight };
-
-    static Rectangle player = { 30.0f, groundY - 50.0f, 40.0f, 40.0f };
-    static Rectangle enemy  = { 220.0f, groundY - 40.0f, 40.0f, 40.0f };
-    
-
-    float velocityY = 0.0f;
-    bool isGrounded = false;
-    bool gameOver = false;
-
-    const float moveSpeed = 220.0f;
-    const float gravity = 950.0f;
-    const float jumpForce = -420.0f;
-    float dt = GetFrameTime()*1.5;
-
     if (!gameOver) {
-        if (IsKeyDown(KEY_A) && (player.x > 0)) {
-            player.x -= moveSpeed * dt;
-            if (player.x < 0) player.x = 0;
+        // Movimiento horizontal
+        player.x += inputDirectionX * moveSpeed * deltaTime;
+
+        if (player.x < 0) {
+            player.x = 0;
         }
-        if (IsKeyDown(KEY_D) && (player.x + player.width < screenWidth)) {
-            player.x += moveSpeed * dt;
-            if (player.x + player.width > screenWidth) {
-                player.x = screenWidth - player.width;
-            }
+        if (player.x + player.width > screenWidth) {
+            player.x = screenWidth - player.width;
         }
 
-        if ((IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_W)) && isGrounded) {
+        // Salto
+        if (jumpRequested && isGrounded) {
             velocityY = jumpForce;
             isGrounded = false;
         }
 
-        // gravity
-        velocityY += gravity * dt;
-        player.y += velocityY * dt;
+        // Gravedad y avance vertical
+        velocityY += gravity * deltaTime;
+        player.y += velocityY * deltaTime;
 
-        // Comprobación de apoyo en las plataformas
+        // Apoyo en plataformas
         isGrounded = false;
         bool sobrePlataformaIzquierda = (player.x + player.width > groundLeft.x) && (player.x < groundLeft.x + groundLeft.width);
         bool sobrePlataformaDerecha   = (player.x + player.width > groundRight.x) && (player.x < groundRight.x + groundRight.width);
 
         if (sobrePlataformaIzquierda || sobrePlataformaDerecha) {
-            // Si está cayendo y cruza el nivel superior del suelo
-            if (player.y + player.height >= groundY && (player.y + player.height - velocityY * dt) <= groundY + 10.0f) {
+            if (player.y + player.height >= groundY && (player.y + player.height - velocityY * deltaTime) <= groundY + 10.0f) {
                 player.y = groundY - player.height;
                 velocityY = 0.0f;
                 isGrounded = true;
             }
         }
 
-        // Si cae por el hueco fuera de la pantalla: Game Over
-        if (player.y > screenHeight) {
-            gameOver = true;
-        }
-
-        // Techo de la pantalla
+        // Techo de pantalla
         if (player.y < 0) {
             player.y = 0;
             velocityY = 0.0f;
         }
 
-        // Colisión con el enemigo
+        // Caída por el hueco
+        if (player.y > screenHeight) {
+            gameOver = true;
+        }
+
+        // Colisión con enemigo
         if (CheckCollisionRecs(player, enemy)) {
             gameOver = true;
         }
     } else {
-        if (IsKeyPressed(KEY_R)) {
+        if (restartRequested) {
             player.x = 30.0f;
             player.y = groundY - player.height;
             velocityY = 0.0f;
@@ -109,11 +120,17 @@ void MainGameState::render()
             gameOver = false;
         }
     }
+}
+
+void MainGameState::render()
+{
+    const int screenWidth = GetScreenWidth();
+    const int screenHeight = GetScreenHeight();
 
     BeginDrawing();
         ClearBackground(RAYWHITE);
 
-        // Suelos (verde) y hueco (se ve el fondo)
+        // Plataformas / Suelos
         DrawRectangleRec(groundLeft, DARKGREEN);
         DrawRectangleRec(groundRight, DARKGREEN);
 
@@ -121,6 +138,7 @@ void MainGameState::render()
         DrawRectangleRec(enemy, BLACK);
         DrawRectangleRec(player, RED);
 
+        // UI
         DrawText(TextFormat("X: %.0f | Y: %.0f", player.x, player.y), 10, 30, 16, DARKGRAY);
 
         if (!gameOver) {
