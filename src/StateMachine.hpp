@@ -19,6 +19,7 @@ class StateMachine
         bool isRunning() {return this->is_running;}
 
         bool is_game_ending() {return this->is_ending;}
+        bool has_states() const { return !this->states_machine.empty(); }
 
         std::unique_ptr<GameState>& getCurrentState() {return this->states_machine.top();}
     
