@@ -1,11 +1,12 @@
 #include "Projectile.hpp"
 #include <cmath>
 
-Projectile::Projectile(Vector2 startPos, Vector2 dir, float spd, float rad)
+Projectile::Projectile(Vector2 startPos, Vector2 dir, float spd, float rad, Color col)
     : position(startPos),
       direction(dir),
       speed(spd),
       radius(rad),
+      color(col),
       active(true)
 {
     float len = std::sqrt(direction.x * direction.x + direction.y * direction.y);
@@ -38,8 +39,8 @@ void Projectile::render() const
 {
     if (!active) return;
 
-    DrawCircleV(position, radius, RED);
-    DrawCircleLines((int)position.x, (int)position.y, radius, MAROON);
+    DrawCircleV(position, radius, color);
+    DrawCircleLines((int)position.x, (int)position.y, radius, BLACK);
 }
 
 bool Projectile::checkCollision(Rectangle rec) const
