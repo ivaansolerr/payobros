@@ -1,5 +1,6 @@
 #pragma once
 #include "GameState.hpp"
+#include "objects/Weapon.hpp"
 
 extern "C" {
     #include <raylib.h>
@@ -25,6 +26,10 @@ class MainGameState : public GameState
         // Entidades
         Rectangle player;
         Rectangle enemy;
+        bool enemyAlive;
+
+        // Arma
+        Weapon weapon;
 
         // Plataformas / Entorno
         Rectangle groundLeft;
