@@ -40,10 +40,10 @@ void MainGameState::render()
     static Rectangle player = { 30.0f, groundY - 50.0f, 40.0f, 40.0f };
     static Rectangle enemy  = { 220.0f, groundY - 40.0f, 40.0f, 40.0f };
     
-    // fisicas temporales
-    static float velocityY = 0.0f;
-    static bool isGrounded = false;
-    static bool gameOver = false;
+
+    float velocityY = 0.0f;
+    bool isGrounded = false;
+    bool gameOver = false;
 
     const float moveSpeed = 220.0f;
     const float gravity = 950.0f;
