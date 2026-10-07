@@ -10,6 +10,7 @@ MainGameState::MainGameState()
       jumpRequested(false),
       restartRequested(false),
       gameOver(false),
+      enemyAlive(true),
       floorHeight(180.0f),
       groundY(0.0f)
 {
@@ -29,6 +30,9 @@ void MainGameState::init()
 
     player = { 30.0f, groundY - 50.0f, 40.0f, 40.0f };
     enemy  = { 220.0f, groundY - 40.0f, 40.0f, 40.0f };
+    enemyAlive = true;
+
+    weapon.clear();
 
     velocityY = 0.0f;
     isGrounded = false;
@@ -59,6 +63,10 @@ void MainGameState::handleInput()
         if (IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_W)) {
             jumpRequested = true;
         }
+
+        // Manejo de disparo del arma
+        Vector2 playerCenter = { player.x + player.width / 2.0f, player.y + player.height / 2.0f };
+        weapon.handleInput(playerCenter);
     } else {
         if (IsKeyPressed(KEY_R)) {
             restartRequested = true;
@@ -116,8 +124,22 @@ void MainGameState::update(float deltaTime)
             gameOver = true;
         }
 
-        // Colisión con enemigo
-        if (CheckCollisionRecs(player, enemy)) {
+        // Actualizar proyectiles del arma
+        weapon.update(deltaTime);
+
+        // Colisión de proyectiles con enemigo
+        if (enemyAlive) {
+            for (auto& proj : weapon.getProjectiles()) {
+                if (proj.isActive() && proj.checkCollision(enemy)) {
+                    proj.deactivate();
+                    enemyAlive = false;
+                    break;
+                }
+            }
+        }
+
+        // Colisión con enemigo (si sigue vivo)
+        if (enemyAlive && CheckCollisionRecs(player, enemy)) {
             gameOver = true;
         }
     } else {
@@ -126,6 +148,8 @@ void MainGameState::update(float deltaTime)
             player.y = groundY - player.height;
             velocityY = 0.0f;
             isGrounded = true;
+            enemyAlive = true;
+            weapon.clear();
             gameOver = false;
         }
     }
@@ -144,14 +168,22 @@ void MainGameState::render()
         DrawRectangleRec(groundRight, DARKGREEN);
 
         // Entidades
-        DrawRectangleRec(enemy, BLACK);
+        if (enemyAlive) {
+            DrawRectangleRec(enemy, BLACK);
+        }
         DrawRectangleRec(player, RED);
+
+        // Arma: línea de apuntado al cursor y proyectiles
+        Vector2 playerCenter = { player.x + player.width / 2.0f, player.y + player.height / 2.0f };
+        if (!gameOver) {
+            weapon.render(playerCenter);
+        }
 
         // UI
         DrawText(TextFormat("X: %.0f | Y: %.0f", player.x, player.y), 10, 30, 16, DARKGRAY);
 
         if (!gameOver) {
-            DrawText("A/D: Moverse | ESPACIO: Saltar hueco | M: Menú", 10, 10, 14, DARKGRAY);
+            DrawText("A/D: Moverse | ESPACIO: Saltar | Click: Disparar | M: Menú", 10, 10, 14, DARKGRAY);
         } else {
             DrawText("GAME OVER", screenWidth / 2 - 80, screenHeight / 2 - 45, 30, MAROON);
             DrawText("Presiona R para reiniciar", screenWidth / 2 - 100, screenHeight / 2 - 5, 16, DARKGRAY);
