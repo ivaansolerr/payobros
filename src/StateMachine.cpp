@@ -29,7 +29,10 @@ void StateMachine::handle_state_changes(float& deltaTime)
 
         if (!this->is_Adding)
         {
-            this->states_machine.top()->resume();
+            if (!this->states_machine.empty())
+            {
+                this->states_machine.top()->resume();
+            }
             deltaTime = 0.0f;
         }
     }

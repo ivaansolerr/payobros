@@ -1,4 +1,5 @@
 #include "MainGameState.hpp"
+#include "StateMachine.hpp"
 #include <iostream>
 
 MainGameState::MainGameState()
@@ -39,6 +40,14 @@ void MainGameState::handleInput()
     inputDirectionX = 0.0f;
     jumpRequested = false;
     restartRequested = false;
+
+    // Regresar al menú principal al pulsar M
+    if (IsKeyPressed(KEY_M)) {
+        if (state_machine) {
+            state_machine->remove_state(false);
+            return;
+        }
+    }
 
     // Lee la última tecla si necesitas registrar entered_key
     entered_key = static_cast<char>(GetCharPressed());
@@ -142,10 +151,11 @@ void MainGameState::render()
         DrawText(TextFormat("X: %.0f | Y: %.0f", player.x, player.y), 10, 30, 16, DARKGRAY);
 
         if (!gameOver) {
-            DrawText("A/D: Moverse | ESPACIO: Saltar hueco", 10, 10, 14, DARKGRAY);
+            DrawText("A/D: Moverse | ESPACIO: Saltar hueco | M: Menú", 10, 10, 14, DARKGRAY);
         } else {
-            DrawText("GAME OVER", screenWidth / 2 - 80, screenHeight / 2 - 30, 30, MAROON);
-            DrawText("Presiona R para reiniciar", screenWidth / 2 - 100, screenHeight / 2 + 10, 16, DARKGRAY);
+            DrawText("GAME OVER", screenWidth / 2 - 80, screenHeight / 2 - 45, 30, MAROON);
+            DrawText("Presiona R para reiniciar", screenWidth / 2 - 100, screenHeight / 2 - 5, 16, DARKGRAY);
+            DrawText("Presiona M para volver al menú", screenWidth / 2 - 120, screenHeight / 2 + 25, 16, DARKGRAY);
         }
     EndDrawing();
 }

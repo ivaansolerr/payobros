@@ -1,7 +1,6 @@
-#include <StateMachine.hpp>
-#include <MainGameState.hpp>
+#include "StateMachine.hpp"
+#include "MenuState.hpp"
 #include <memory>
-#include <chrono>
 
 extern "C" {
     #include <raylib.h>
@@ -9,24 +8,33 @@ extern "C" {
 
 int main()
 { 
-    float delta_time = 0.0f;
-    const int screenWidth = GetScreenWidth();;
-    const int screenHeight = GetScreenHeight();
+    const int screenWidth = 800;
+    const int screenHeight = 450;
 
-    StateMachine state_machine = StateMachine();
-    state_machine.add_state(std::make_unique<MainGameState>(), false);
+    InitWindow(screenWidth, screenHeight, "Bienvenido a PayoBros");
+    SetTargetFPS(60);
+
+    float delta_time = 0.0f;
+
+    StateMachine state_machine;
+    state_machine.add_state(std::make_unique<MenuState>(), false);
     state_machine.handle_state_changes(delta_time);
 
-    InitWindow(screenWidth, screenHeight ,"Bienvenido a PayoBros");
-
-    while (!state_machine.is_game_ending())
+    while (!state_machine.is_game_ending() && !WindowShouldClose())
     {
-        // aquí hay que poner el delta_time
+        delta_time = GetFrameTime();
         state_machine.handle_state_changes(delta_time);
+
+        if (state_machine.is_game_ending() || !state_machine.has_states())
+        {
+            break;
+        }
+
         state_machine.getCurrentState()->handleInput();
         state_machine.getCurrentState()->update(delta_time);
         state_machine.getCurrentState()->render();       
     }
 
+    CloseWindow();
     return 0;
 }
