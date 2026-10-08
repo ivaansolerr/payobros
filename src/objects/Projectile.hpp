@@ -1,12 +1,13 @@
 #pragma once
+#include <raylib.h>
 
-extern "C" {
-    #include <raylib.h>
-}
+const static float PROJECTILE_SPEED = 500.0f;
+const static float PROJECTILE_RADIUS = 5.0f;
 
 class Projectile {
 public:
-    Projectile(Vector2 startPos, Vector2 direction, float speed = 500.0f, float radius = 5.0f);
+    Projectile(Vector2 startPos, Vector2 direction,
+               float speed = PROJECTILE_SPEED, float radius = PROJECTILE_RADIUS, Color color = RED);
 
     void update(float deltaTime);
     void render() const;
@@ -24,5 +25,6 @@ private:
     Vector2 direction;
     float speed;
     float radius;
+    Color color;
     bool active;
 };

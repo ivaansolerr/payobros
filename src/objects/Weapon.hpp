@@ -2,10 +2,7 @@
 
 #include "Projectile.hpp"
 #include <vector>
-
-extern "C" {
-    #include <raylib.h>
-}
+#include <raylib.h>
 
 class Weapon {
 public:
