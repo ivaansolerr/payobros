@@ -103,7 +103,9 @@ void PlayState::update(float deltaTime)
                 gameOver = true;
             }
         } else {
-            if (!player1.isAlive() && !player2.isAlive()) {
+            // Si uno de los jugadores muere, se pierde
+            // si se quiere mantener vivo al otro jugador cambiar la condición a &&
+            if (!player1.isAlive() || !player2.isAlive()) {
                 gameOver = true;
             }
         }
