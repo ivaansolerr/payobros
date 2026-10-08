@@ -3,7 +3,7 @@
 void Level::init(int screenWidth, int screenHeight)
 {
     floorHeight = 180.0f;
-    groundY = screenHeight - floorHeight;
+    const float groundY = screenHeight - floorHeight;
 
     platforms.clear();
     platforms.push_back({0.0f, groundY, 110.0f, floorHeight});
@@ -20,14 +20,14 @@ void Level::render() const
     }
 }
 
-bool Level::isOnPlatform(Rectangle rect) const
+float Level::getPlatformY(Rectangle rect) const
 {
     for (const auto& platform : platforms) {
         bool overlapX = (rect.x + rect.width > platform.x) &&
                         (rect.x < platform.x + platform.width);
         if (overlapX) {
-            return true;
+            return platform.y;  // La Y de la plataforma concreta
         }
     }
-    return false;
+    return -1.0f;  // No está sobre ninguna plataforma
 }

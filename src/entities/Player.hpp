@@ -15,7 +15,10 @@ public:
     void init(float x, float y, float width, float height,
               PlayerKeys keys, Color color);
     void handleInput();
-    void update(float deltaTime, float groundY, bool onPlatform);
+
+    // platformY -> la Y de la plataforma sobre la que está el jugador (-1 si no hay)
+    // screenWidth ->  ancho de la pantalla (cacheado una vez por frame en PlayState)
+    void update(float deltaTime, float platformY, int screenWidth);
     void render() const;
 
     Rectangle getBounds() const { return bounds; }
@@ -24,7 +27,7 @@ public:
     bool isAlive() const { return alive; }
     void kill() { alive = false; }
 
-    bool hasFallenOff(float screenHeight) const;
+    bool hasFallenOff(int screenHeight) const;
 
 private:
     Rectangle bounds = {0, 0, 0, 0};

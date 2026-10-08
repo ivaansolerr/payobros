@@ -66,15 +66,17 @@ void PlayState::handleInput()
 
 void PlayState::update(float deltaTime)
 {
+    // Cachear dimensiones de pantalla una vez por frame
+    const int screenWidth = GetScreenWidth();
     const int screenHeight = GetScreenHeight();
 
     if (!gameOver) {
         // --- Jugador 1 ---
         if (player1.isAlive()) {
-            bool onPlatform1 = level.isOnPlatform(player1.getBounds());
-            player1.update(deltaTime, level.getGroundY(), onPlatform1);
+            float platformY1 = level.getPlatformY(player1.getBounds());
+            player1.update(deltaTime, platformY1, screenWidth);
 
-            if (player1.hasFallenOff(static_cast<float>(screenHeight))) {
+            if (player1.hasFallenOff(screenHeight)) {
                 player1.kill();
             }
 
@@ -85,10 +87,10 @@ void PlayState::update(float deltaTime)
 
         // --- Jugador 2 ---
         if (numPlayers >= 2 && player2.isAlive()) {
-            bool onPlatform2 = level.isOnPlatform(player2.getBounds());
-            player2.update(deltaTime, level.getGroundY(), onPlatform2);
+            float platformY2 = level.getPlatformY(player2.getBounds());
+            player2.update(deltaTime, platformY2, screenWidth);
 
-            if (player2.hasFallenOff(static_cast<float>(screenHeight))) {
+            if (player2.hasFallenOff(screenHeight)) {
                 player2.kill();
             }
 

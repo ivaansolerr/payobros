@@ -20,17 +20,15 @@ public:
     void init(int screenWidth, int screenHeight);
     void render() const;
 
-    float getGroundY() const { return groundY; }
-
-    // Comprueba si un rectángulo está sobre alguna plataforma
-    bool isOnPlatform(Rectangle rect) const;
+    // Devuelve la Y de la plataforma sobre la que está el rectángulo,
+    // o -1.0f si no está sobre ninguna. Permite plataformas a distintas alturas.
+    float getPlatformY(Rectangle rect) const;
 
     SpawnPoint getPlayerSpawn() const { return playerSpawn; }
     SpawnPoint getEnemySpawn() const { return enemySpawn; }
 
 private:
     std::vector<Rectangle> platforms;
-    float groundY = 0.0f;
     float floorHeight = 180.0f;
 
     SpawnPoint playerSpawn = {};

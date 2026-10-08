@@ -29,11 +29,9 @@ void Player::handleInput()
     }
 }
 
-void Player::update(float deltaTime, float groundY, bool onPlatform)
+void Player::update(float deltaTime, float platformY, int screenWidth)
 {
     if (!alive) return;
-
-    const int screenWidth = GetScreenWidth();
 
     // Movimiento horizontal
     bounds.x += inputDirectionX * MOVE_SPEED * deltaTime;
@@ -55,12 +53,12 @@ void Player::update(float deltaTime, float groundY, bool onPlatform)
     velocityY += GRAVITY * deltaTime;
     bounds.y += velocityY * deltaTime;
 
-    // Apoyo en plataformas
+    // Apoyo en plataformas (platformY >= 0 indica que hay una plataforma debajo)
     grounded = false;
-    if (onPlatform) {
-        if (bounds.y + bounds.height >= groundY &&
-            (bounds.y + bounds.height - velocityY * deltaTime) <= groundY + 10.0f) {
-            bounds.y = groundY - bounds.height;
+    if (platformY >= 0.0f) {
+        if (bounds.y + bounds.height >= platformY &&
+            (bounds.y + bounds.height - velocityY * deltaTime) <= platformY + 10.0f) {
+            bounds.y = platformY - bounds.height;
             velocityY = 0.0f;
             grounded = true;
         }
@@ -85,7 +83,7 @@ Vector2 Player::getCenter() const
     return {bounds.x + bounds.width / 2.0f, bounds.y + bounds.height / 2.0f};
 }
 
-bool Player::hasFallenOff(float screenHeight) const
+bool Player::hasFallenOff(int screenHeight) const
 {
     return alive && bounds.y > screenHeight;
 }
