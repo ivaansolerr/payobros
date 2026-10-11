@@ -1,17 +1,15 @@
 #include "Weapon.hpp"
 #include <algorithm>
 
-Weapon::Weapon()
-    : projectileSpeed(550.0f),
-      projectileRadius(5.0f)
-{
+Weapon::Weapon() {
+    this->projectileSpeed = 550.0f;
+    this->projectileRadius = 5.0f;
 }
 
 void Weapon::handleInput(Vector2 origin)
 {
     Vector2 mousePos = GetMousePosition();
 
-    // Al hacer click izquierdo, lanzar un proyectil en esa dirección
     if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
         shoot(origin, mousePos);
     }
@@ -25,28 +23,26 @@ void Weapon::shoot(Vector2 origin, Vector2 target)
 
 void Weapon::update(float deltaTime)
 {
-    for (auto& projectile : projectiles) {
-        projectile.update(deltaTime);
+    for (unsigned i = 0; i < projectiles.size(); i++) {
+        projectiles[i].update(deltaTime);
     }
 
-    // Eliminar los proyectiles que salieron de pantalla o impactaron
+    // borramos del vector de proyectiles de weapons las balas que salen fuera
     projectiles.erase(
-        std::remove_if(projectiles.begin(), projectiles.end(),
-                       [](const Projectile& p) { return !p.isActive(); }),
-        projectiles.end());
+        std::remove_if(projectiles.begin(), projectiles.end(), [](const Projectile& p) { return !p.isActive(); }),
+            projectiles.end());
 }
 
 void Weapon::render(Vector2 origin)
 {
     Vector2 mousePos = GetMousePosition();
 
-    // Traza una línea recta desde el jugador hasta donde se encuentra el cursor
+    // linea roja desde el personaje hasta donde apunta el ratón
     DrawLineV(origin, mousePos, RED);
 
-    // Indicador circular sutil en la posición del cursor
+    // donde se apunta con el ratón
     DrawCircleLines((int)mousePos.x, (int)mousePos.y, 5.0f, RED);
 
-    // Dibujar los proyectiles
     for (const auto& projectile : projectiles) {
         projectile.render();
     }

@@ -50,5 +50,5 @@ class MainGameState : public GameState
         bool restartRequested;
 
         // Estado del juego
-        bool gameOver;
+        bool gameOver = false;
 };

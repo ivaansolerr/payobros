@@ -1,19 +1,18 @@
 #include "Projectile.hpp"
 #include <cmath>
 
-Projectile::Projectile(Vector2 startPos, Vector2 dir, float spd, float rad)
-    : position(startPos),
-      direction(dir),
-      speed(spd),
-      radius(rad),
-      active(true)
+Projectile::Projectile(Vector2 position, Vector2 direction, float speed, float radius)
 {
+    this->position = position;
+    this->speed = speed;
+    this->radius = radius;
+    this->active = true;
+
     float len = std::sqrt(direction.x * direction.x + direction.y * direction.y);
     if (len > 0.0001f) {
-        direction.x /= len;
-        direction.y /= len;
+        this->direction = { direction.x / len, direction.y / len };
     } else {
-        direction = { 1.0f, 0.0f };
+        this->direction = { 1.0f, 0.0f };
     }
 }
 
@@ -27,7 +26,7 @@ void Projectile::update(float deltaTime)
     const int screenWidth = GetScreenWidth();
     const int screenHeight = GetScreenHeight();
 
-    // Desactivar si el proyectil sale de la pantalla
+    // por si sale de la pantalla
     if (position.x < -radius || position.x > screenWidth + radius ||
         position.y < -radius || position.y > screenHeight + radius) {
         active = false;

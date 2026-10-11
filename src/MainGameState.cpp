@@ -2,19 +2,16 @@
 #include "StateMachine.hpp"
 #include <iostream>
 
-MainGameState::MainGameState()
-    : entered_key(0),
-      velocityY(0.0f),
-      isGrounded(false),
-      inputDirectionX(0.0f),
-      jumpRequested(false),
-      restartRequested(false),
-      gameOver(false),
-      enemyAlive(true),
-      floorHeight(180.0f),
-      groundY(0.0f)
-{
-    init();
+MainGameState::MainGameState(){
+    this->entered_key = 0;
+    this->velocityY = 0.0f;
+    this->isGrounded = false;
+    this->inputDirectionX = 0.0f;
+    this->jumpRequested = false;
+    this->restartRequested = false;
+    this->enemyAlive = false;
+    this->floorHeight = 180.0f;
+    this->groundY = 0.0f;
 }
 
 void MainGameState::init()
@@ -33,10 +30,6 @@ void MainGameState::init()
     enemyAlive = true;
 
     weapon.clear();
-
-    velocityY = 0.0f;
-    isGrounded = false;
-    gameOver = false;
 }
 
 void MainGameState::handleInput()
@@ -45,7 +38,7 @@ void MainGameState::handleInput()
     jumpRequested = false;
     restartRequested = false;
 
-    // Regresar al menú principal al pulsar M
+    // volvemos al menú al pulsar M
     if (IsKeyPressed(KEY_M)) {
         if (state_machine) {
             state_machine->remove_state(false);
@@ -64,7 +57,6 @@ void MainGameState::handleInput()
             jumpRequested = true;
         }
 
-        // Manejo de disparo del arma
         Vector2 playerCenter = { player.x + player.width / 2.0f, player.y + player.height / 2.0f };
         weapon.handleInput(playerCenter);
     } else {
@@ -80,27 +72,24 @@ void MainGameState::update(float deltaTime)
     const int screenHeight = GetScreenHeight();
 
     if (!gameOver) {
-        // Movimiento horizontal
         player.x += inputDirectionX * moveSpeed * deltaTime;
 
         if (player.x < 0) {
             player.x = 0;
         }
+
         if (player.x + player.width > screenWidth) {
             player.x = screenWidth - player.width;
         }
 
-        // Salto
         if (jumpRequested && isGrounded) {
             velocityY = jumpForce;
             isGrounded = false;
         }
 
-        // Gravedad y avance vertical
         velocityY += gravity * deltaTime;
         player.y += velocityY * deltaTime;
 
-        // Apoyo en plataformas
         isGrounded = false;
         bool sobrePlataformaIzquierda = (player.x + player.width > groundLeft.x) && (player.x < groundLeft.x + groundLeft.width);
         bool sobrePlataformaDerecha   = (player.x + player.width > groundRight.x) && (player.x < groundRight.x + groundRight.width);
@@ -119,17 +108,25 @@ void MainGameState::update(float deltaTime)
             velocityY = 0.0f;
         }
 
-        // Caída por el hueco
+        // te caes y mueres
         if (player.y > screenHeight) {
             gameOver = true;
         }
 
-        // Actualizar proyectiles del arma
         weapon.update(deltaTime);
 
-        // Colisión de proyectiles con enemigo
+        // matamos a la caja negra
         if (enemyAlive) {
-            for (auto& proj : weapon.getProjectiles()) {
+            // for (auto& proj : weapon.getProjectiles()) {
+            //     if (proj.isActive() && proj.checkCollision(enemy)) {
+            //         proj.deactivate();
+            //         enemyAlive = false;
+            //         break;
+            //     }
+            // }
+
+            for (unsigned i = 0; i < weapon.getProjectiles().size(); i++){
+                Projectile &proj = weapon.getProjectiles()[i];
                 if (proj.isActive() && proj.checkCollision(enemy)) {
                     proj.deactivate();
                     enemyAlive = false;
