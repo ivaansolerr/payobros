@@ -1,10 +1,7 @@
-#include "StateMachine.hpp"
-#include "MenuState.hpp"
+#include "core/StateMachine.hpp"
+#include "states/MenuState.hpp"
+#include <raylib.h>
 #include <memory>
-
-extern "C" {
-    #include <raylib.h>
-}
 
 int main()
 { 
@@ -14,25 +11,25 @@ int main()
     InitWindow(screenWidth, screenHeight, "Bienvenido a PayoBros");
     SetTargetFPS(60);
 
-    float delta_time = 0.0f;
+    float deltaTime = 0.0f;
 
-    StateMachine state_machine;
-    state_machine.add_state(std::make_unique<MenuState>(), false);
-    state_machine.handle_state_changes(delta_time);
+    StateMachine stateMachine;
+    stateMachine.addState(std::make_unique<MenuState>(), false);
+    stateMachine.handleStateChanges(deltaTime);
 
-    while (!state_machine.is_game_ending() && !WindowShouldClose())
+    while (!stateMachine.isGameEnding() && !WindowShouldClose())
     {
-        delta_time = GetFrameTime();
-        state_machine.handle_state_changes(delta_time);
+        deltaTime = GetFrameTime();
+        stateMachine.handleStateChanges(deltaTime);
 
-        if (state_machine.is_game_ending() || !state_machine.has_states())
+        if (stateMachine.isGameEnding() || !stateMachine.hasStates())
         {
             break;
         }
 
-        state_machine.getCurrentState()->handleInput();
-        state_machine.getCurrentState()->update(delta_time);
-        state_machine.getCurrentState()->render();       
+        stateMachine.getCurrentState()->handleInput();
+        stateMachine.getCurrentState()->update(deltaTime);
+        stateMachine.getCurrentState()->render();       
     }
 
     CloseWindow();

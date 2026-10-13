@@ -4,7 +4,6 @@
 #include <vector>
 #include <raylib.h>
 
-
 class Weapon {
 public:
     Weapon();
