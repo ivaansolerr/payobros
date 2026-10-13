@@ -3,10 +3,6 @@
 #include "Projectile.hpp"
 #include <vector>
 #include <raylib.h>
-<<<<<<< HEAD
-=======
-
->>>>>>> origin/main
 
 class Weapon {
 public:
