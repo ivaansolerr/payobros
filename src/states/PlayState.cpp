@@ -11,8 +11,8 @@ void PlayState::init()
     const int screenWidth = GetScreenWidth();
     const int screenHeight = GetScreenHeight();
 
-    level.init(screenWidth, screenHeight);
     level.load("src/assets/psoe.tmx");
+    level.init(screenWidth, screenHeight);
 
     auto ps = level.getPlayerSpawn();
 

@@ -24,16 +24,27 @@ static int getIntAttr(const string& xml, const string& name, size_t tagStart, in
     return value.empty() ? fallback : stoi(value);
 }
 
-bool Level::load(const string& tmxPath)
+// Lee un archivo de texto entero a un string. Devuelve false si no se puede abrir.
+static bool readTextFile(const string& path, string& out)
 {
-    // 1. Leer el archivo entero a un string
-    char* raw = LoadFileText(tmxPath.c_str());
+    char* raw = LoadFileText(path.c_str());
     if (!raw) {
-        TraceLog(LOG_ERROR, "LEVEL: No se pudo abrir %s", tmxPath.c_str());
+        TraceLog(LOG_ERROR, "LEVEL: No se pudo abrir %s", path.c_str());
         return false;
     }
-    const string xml(raw);
+    out = raw;
     UnloadFileText(raw);
+    return true;
+}
+
+bool Level::load(const string& tmxPath)
+{
+    // Si ya había un mapa cargado (por ejemplo, al reiniciar con R), lo liberamos primero
+    unload();
+
+    // 1. Leer el archivo entero a un string
+    string xml;
+    if (!readTextFile(tmxPath, xml)) return false;
 
     // 2. Cabecera: <map ...>
     const size_t mapTag = xml.find("<map");
@@ -49,7 +60,7 @@ bool Level::load(const string& tmxPath)
     // 3. Tileset
     const size_t tilesetTag = xml.find("<tileset");
     firstGid = getIntAttr(xml, "firstgid", tilesetTag, 1);
-    const string tsxFile = getAttr(xml, "source", tilesetTag);  // se usará en la fase 3
+    const string tsxFile = getAttr(xml, "source", tilesetTag);
 
     // 4. números entre <data encoding="csv"> y </data>
     const size_t dataTag = xml.find("<data");
@@ -80,7 +91,37 @@ bool Level::load(const string& tmxPath)
                  mapWidth * mapHeight, static_cast<int>(tiles.size()));
         return false;
     }
+
+    // 5. Tileset: las rutas del .tmx y del .tsx son relativas a la carpeta del archivo que las nombra
+    //    GetDirectoryPath devuelve un buffer interno de raylib, así que lo copiamos a un string
+    const string folder = GetDirectoryPath(tmxPath.c_str());  // "src/assets"
+
+    string tsx;
+    if (!readTextFile(folder + "/" + tsxFile, tsx)) return false;
+
+    // <tileset ... columns="6"> y dentro <image source="tileset.png" .../>
+    tilesetColumns = getIntAttr(tsx, "columns", tsx.find("<tileset"), 1);
+    const string imageFile = getAttr(tsx, "source", tsx.find("<image"));
+
+    tileset = LoadTexture((folder + "/" + imageFile).c_str());
+    if (tileset.id == 0) {
+        TraceLog(LOG_ERROR, "LEVEL: No se pudo cargar la imagen del tileset %s", imageFile.c_str());
+        return false;
+    }
+
+    TraceLog(LOG_INFO, "LEVEL: Tileset %s: %d columnas, imagen %s",
+             tsxFile.c_str(), tilesetColumns, imageFile.c_str());
     return true;
+}
+
+void Level::unload()
+{
+    if (tileset.id != 0) {
+        UnloadTexture(tileset);
+        tileset = {};
+    }
+    tiles.clear();
+    platforms.clear();
 }
 
 void Level::init(int screenWidth, int screenHeight)
