@@ -15,19 +15,21 @@ void Level::init(int screenWidth, int screenHeight)
 
 void Level::render() const
 {
-    for (const auto& platform : platforms) {
-        DrawRectangleRec(platform, DARKGREEN);
+    for (unsigned i = 0; i < this->platforms.size(); i++){
+        DrawRectangleRec(this->platforms[i], DARKGREEN);
     }
 }
 
 float Level::getPlatformY(Rectangle rect) const
 {
-    for (const auto& platform : platforms) {
-        bool overlapX = (rect.x + rect.width > platform.x) &&
-                        (rect.x < platform.x + platform.width);
+
+    for (unsigned i = 0; i < this->platforms.size(); i++){
+        bool overlapX = (rect.x + rect.width > this->platforms[i].x) &&
+                        (rect.x < this->platforms[i].x + this->platforms[i].width);
         if (overlapX) {
-            return platform.y;  // La Y de la plataforma concreta
+            return this->platforms[i].y; 
         }
     }
-    return -1.0f;  // No está sobre ninguna plataforma
+
+    return -1.0f;  
 }
