@@ -1,31 +1,30 @@
 #include "PlayState.hpp"
 #include "core/StateMachine.hpp"
 
-PlayState::PlayState(int numPlayers)
-    : numPlayers(numPlayers)
-{
+#define screenWidth GetScreenWidth()
+#define screenHeight GetScreenHeight()
+
+PlayState::PlayState(int numPlayers){
+    this->numPlayers = numPlayers;
 }
 
-void PlayState::init()
-{
-    const int screenWidth = GetScreenWidth();
-    const int screenHeight = GetScreenHeight();
+void PlayState::init() {
 
     level.init(screenWidth, screenHeight);
 
-    auto ps = level.getPlayerSpawn();
+    SpawnPoint ps = level.getPlayerSpawn();
 
-    // Jugador 1: Rojo, controles WASD / Espacio
+    // player 1 rojo
     PlayerKeys keys1 = { KEY_A, KEY_D, KEY_SPACE, KEY_W };
     player1.init(ps.x, ps.y, ps.width, ps.height, keys1, RED);
 
-    // Jugador 2: Azul, controles flechas (Izquierda, Derecha, Arriba)
+    // player 2 azul
     if (numPlayers >= 2) {
         PlayerKeys keys2 = { KEY_LEFT, KEY_RIGHT, KEY_UP, -1 };
         player2.init(ps.x + 45.0f, ps.y, ps.width, ps.height, keys2, BLUE);
     }
 
-    auto es = level.getEnemySpawn();
+    SpawnPoint es = level.getEnemySpawn();
     enemy.init(es.x, es.y, es.width, es.height);
 
     weapon.clear();
@@ -37,7 +36,6 @@ void PlayState::handleInput()
 {
     restartRequested = false;
 
-    // Regresar al menú principal al pulsar M
     if (IsKeyPressed(KEY_M)) {
         if (stateMachine) {
             stateMachine->removeState(false);
@@ -52,7 +50,6 @@ void PlayState::handleInput()
             player2.handleInput();
         }
 
-        // Manejo de disparo del arma (asociado a jugador 1 mientras siga vivo)
         if (player1.isAlive()) {
             Vector2 playerCenter = player1.getCenter();
             weapon.handleInput(playerCenter);
@@ -66,12 +63,8 @@ void PlayState::handleInput()
 
 void PlayState::update(float deltaTime)
 {
-    // Cachear dimensiones de pantalla una vez por frame
-    const int screenWidth = GetScreenWidth();
-    const int screenHeight = GetScreenHeight();
 
     if (!gameOver) {
-        // --- Jugador 1 ---
         if (player1.isAlive()) {
             float platformY1 = level.getPlatformY(player1.getBounds());
             player1.update(deltaTime, platformY1, screenWidth);
@@ -85,7 +78,6 @@ void PlayState::update(float deltaTime)
             }
         }
 
-        // --- Jugador 2 ---
         if (numPlayers >= 2 && player2.isAlive()) {
             float platformY2 = level.getPlatformY(player2.getBounds());
             player2.update(deltaTime, platformY2, screenWidth);
@@ -99,23 +91,18 @@ void PlayState::update(float deltaTime)
             }
         }
 
-        // Condición de derrota: todos los jugadores activos han muerto
         if (numPlayers == 1) {
             if (!player1.isAlive()) {
                 gameOver = true;
             }
         } else {
-            // Si uno de los jugadores muere, se pierde
-            // si se quiere mantener vivo al otro jugador cambiar la condición a &&
             if (!player1.isAlive() || !player2.isAlive()) {
                 gameOver = true;
             }
         }
 
-        // Actualizar proyectiles del arma
         weapon.update(deltaTime);
 
-        // Colisión de proyectiles con enemigo
         if (enemy.isAlive()) {
             for (auto& proj : weapon.getProjectiles()) {
                 if (proj.isActive() && proj.checkCollision(enemy.getBounds())) {
@@ -134,8 +121,6 @@ void PlayState::update(float deltaTime)
 
 void PlayState::render()
 {
-    const int screenWidth = GetScreenWidth();
-    const int screenHeight = GetScreenHeight();
 
     BeginDrawing();
         ClearBackground(RAYWHITE);
