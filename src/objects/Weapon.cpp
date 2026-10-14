@@ -43,8 +43,8 @@ void Weapon::render(Vector2 origin)
     // donde se apunta con el ratón
     DrawCircleLines((int)mousePos.x, (int)mousePos.y, 5.0f, RED);
 
-    for (const auto& projectile : projectiles) {
-        projectile.render();
+    for (unsigned i = 0; i < this->projectiles.size(); i++){
+        this->projectiles[i].render();
     }
 }
 
