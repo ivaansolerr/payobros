@@ -171,7 +171,7 @@ void PlayState::render()
         ClearBackground(RAYWHITE);
 
         // Nivel (plataformas)
-        2
+        level.render();
 
         // Entidades
         enemy.render();
