@@ -2,6 +2,9 @@
 #include <raylib.h>
 #include <vector>
 
+class b2Body;
+class b2World;
+
 // Contiene los datos geométricos de un nivel: plataformas y puntos de spawn.
 // Para añadir un nuevo nivel, basta con crear otra instancia de Level
 // con diferentes plataformas y spawn points.
@@ -19,6 +22,8 @@ public:
 
     void init(int screenWidth, int screenHeight);
     void render() const;
+    void createPhysicsBodies(b2World& world);
+    void clearPhysicsBodies(b2World& world);
 
     // Devuelve la Y de la plataforma sobre la que está el rectángulo,
     // o -1.0f si no está sobre ninguna. Permite plataformas a distintas alturas.
@@ -29,6 +34,7 @@ public:
 
 private:
     std::vector<Rectangle> platforms;
+    std::vector<b2Body*> physicsBodies;
     float floorHeight = 180.0f;
 
     SpawnPoint playerSpawn = {};
