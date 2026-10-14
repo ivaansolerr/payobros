@@ -23,6 +23,8 @@ public:
 
     Rectangle getBounds() const { return bounds; }
     Vector2 getCenter() const;
+    Vector2 getFacingDirection() const { return {facingDirectionX, 0.0f}; }
+    Vector2 getWeaponOrigin() const;
 
     bool isAlive() const { return alive; }
     void kill() { alive = false; }
@@ -44,5 +46,6 @@ private:
 
     // Input almacenado entre handleInput() y update()
     float inputDirectionX = 0.0f;
+    float facingDirectionX = 1.0f;
     bool jumpRequested = false;
 };

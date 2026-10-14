@@ -1,30 +1,34 @@
 #pragma once
-#include <raylib.h>
 
-const static float PROJECTILE_SPEED = 500.0f;
-const static float PROJECTILE_RADIUS = 5.0f;
+#include "ProjectileConfig.hpp"
+#include <box2d/box2d.h>
+#include <raylib.h>
 
 class Projectile {
 public:
-    Projectile(Vector2 startPos, Vector2 direction,
-               float speed = PROJECTILE_SPEED, float radius = PROJECTILE_RADIUS, Color color = RED);
+    Projectile(b2World& world, Vector2 startPos, Vector2 direction, ProjectileConfig config = {});
+    ~Projectile();
+
+    Projectile(const Projectile&) = delete;
+    Projectile& operator=(const Projectile&) = delete;
 
     void update(float deltaTime);
     void render() const;
 
     bool isActive() const { return active; }
-    void deactivate() { active = false; }
+    void deactivate();
 
     Vector2 getPosition() const { return position; }
-    float getRadius() const { return radius; }
+    float getRadius() const { return config.radius; }
 
     bool checkCollision(Rectangle rec) const;
 
 private:
     Vector2 position;
-    Vector2 direction;
-    float speed;
-    float radius;
-    Color color;
-    bool active;
+    ProjectileConfig config;
+    b2World* world;
+    b2Body* body = nullptr;
+    int bounceCount = 0;
+    bool touchingPlatform = false;
+    bool active = true;
 };
