@@ -2,12 +2,10 @@
 #include <sstream>
 using namespace std;
 
-// Devuelve el valor del atributo `name` de la etiqueta XML que empieza en `tagStart`.
 static string getAttr(const string& xml, const string& name, size_t tagStart)
 {
     const size_t tagEnd = xml.find('>', tagStart);
 
-    // El espacio delante evita que "width" encuentre el final de "tilewidth"
     const string key = " " + name + "=\"";
     size_t start = xml.find(key, tagStart);
     if (start == string::npos || start > tagEnd) return "";
@@ -17,14 +15,16 @@ static string getAttr(const string& xml, const string& name, size_t tagStart)
     return xml.substr(start, end - start);
 }
 
-// Igual que getAttr, pero convierte el valor a entero (o devuelve `fallback` si no existe)
 static int getIntAttr(const string& xml, const string& name, size_t tagStart, int fallback)
 {
     const string value = getAttr(xml, name, tagStart);
-    return value.empty() ? fallback : stoi(value);
+    if (value.empty())
+        return fallback;        
+    else
+        return stoi(value);     
+
 }
 
-// Lee un archivo de texto entero a un string. Devuelve false si no se puede abrir.
 static bool readTextFile(const string& path, string& out)
 {
     char* raw = LoadFileText(path.c_str());
@@ -39,14 +39,11 @@ static bool readTextFile(const string& path, string& out)
 
 bool Level::load(const string& tmxPath)
 {
-    // Si ya había un mapa cargado (por ejemplo, al reiniciar con R), lo liberamos primero
     unload();
 
-    // 1. Leer el archivo entero a un string
     string xml;
     if (!readTextFile(tmxPath, xml)) return false;
 
-    // 2. Cabecera: <map ...>
     const size_t mapTag = xml.find("<map");
     if (mapTag == string::npos) {
         TraceLog(LOG_ERROR, "LEVEL: %s no es un mapa de Tiled", tmxPath.c_str());
@@ -57,12 +54,10 @@ bool Level::load(const string& tmxPath)
     tileWidth  = getIntAttr(xml, "tilewidth",  mapTag, 32);
     tileHeight = getIntAttr(xml, "tileheight", mapTag, 32);
 
-    // 3. Tileset
     const size_t tilesetTag = xml.find("<tileset");
     firstGid = getIntAttr(xml, "firstgid", tilesetTag, 1);
     const string tsxFile = getAttr(xml, "source", tilesetTag);
 
-    // 4. números entre <data encoding="csv"> y </data>
     const size_t dataTag = xml.find("<data");
     if (dataTag == string::npos || getAttr(xml, "encoding", dataTag) != "csv") {
         TraceLog(LOG_ERROR, "LEVEL: %s debe guardar la capa en formato CSV", tmxPath.c_str());
@@ -72,14 +67,11 @@ bool Level::load(const string& tmxPath)
     const size_t dataEnd   = xml.find("</data>", dataStart);
     stringstream csv(xml.substr(dataStart, dataEnd - dataStart));
 
-    tiles.clear();
     string cell;
     while (getline(csv, cell, ',')) {
-        // Tras la última columna de cada fila hay un salto de línea
         if (cell.find_first_of("0123456789") == string::npos) continue;
 
-        // Los 3 bits altos indican si el tile está volteado; los quitamos para quedarnos con el GID
-        tiles.push_back(static_cast<int>(stoul(cell) & 0x1FFFFFFF));
+        tiles.push_back(stoi(cell));
     }
 
     TraceLog(LOG_INFO, "LEVEL: Mapa %s cargado: %dx%d tiles de %dx%d px, %d casillas, tileset %s",
@@ -92,14 +84,11 @@ bool Level::load(const string& tmxPath)
         return false;
     }
 
-    // 5. Tileset: las rutas del .tmx y del .tsx son relativas a la carpeta del archivo que las nombra
-    //    GetDirectoryPath devuelve un buffer interno de raylib, así que lo copiamos a un string
-    const string folder = GetDirectoryPath(tmxPath.c_str());  // "src/assets"
+    const string folder = GetDirectoryPath(tmxPath.c_str());  
 
     string tsx;
     if (!readTextFile(folder + "/" + tsxFile, tsx)) return false;
 
-    // <tileset ... columns="6"> y dentro <image source="tileset.png" .../>
     tilesetColumns = getIntAttr(tsx, "columns", tsx.find("<tileset"), 1);
     const string imageFile = getAttr(tsx, "source", tsx.find("<image"));
 
@@ -139,9 +128,34 @@ void Level::init(int screenWidth, int screenHeight)
 
 void Level::render() const
 {
-    for (const auto& platform : platforms) {
-        DrawRectangleRec(platform, DARKGREEN);
+    for (int i = 0; i < static_cast<int>(tiles.size()); i++){
+        const int gid = tiles[i];
+
+        if (gid == 0) continue;
+
+        const int id = gid - firstGid;
+
+        const int tileColumn = id % tilesetColumns;
+        const int tileRow = id / tilesetColumns;
+
+        const int mapColumn =  i % mapWidth;
+        const int mapRow = i / mapWidth;
+
+        const Rectangle src = {
+            static_cast<float>(tileColumn * tileWidth),
+            static_cast<float>(tileRow * tileHeight),
+            static_cast<float>(tileWidth),
+            static_cast<float>(tileHeight)
+        };
+
+        const Vector2 pos = {
+            static_cast<float>(mapColumn * tileWidth),
+            static_cast<float>(mapRow * tileHeight)
+        };
+
+        DrawTextureRec(tileset, src, pos, WHITE);
     }
+
 }
 
 float Level::getPlatformY(Rectangle rect) const
