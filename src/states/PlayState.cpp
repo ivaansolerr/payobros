@@ -41,6 +41,7 @@ void PlayState::handleInput()
     // Regresar al menú principal al pulsar M
     if (IsKeyPressed(KEY_M)) {
         if (stateMachine) {
+            level.unload();
             stateMachine->removeState(false);
             return;
         }

@@ -2,6 +2,8 @@
 #include <sstream>
 using namespace std;
 
+const int SOLID_GID = 1;
+
 static string getAttr(const string& xml, const string& name, size_t tagStart)
 {
     const size_t tagEnd = xml.find('>', tagStart);
@@ -100,6 +102,23 @@ bool Level::load(const string& tmxPath)
 
     TraceLog(LOG_INFO, "LEVEL: Tileset %s: %d columnas, imagen %s",
              tsxFile.c_str(), tilesetColumns, imageFile.c_str());
+
+    platforms.clear();
+    for (int i = 0; i < static_cast<int>(tiles.size()); i++) {  
+        if (tiles[i] != SOLID_GID) continue;
+
+        const int mapColumn = i % mapWidth;
+        const int mapRow = i / mapWidth;
+
+        platforms.push_back({
+            static_cast<float>(mapColumn * tileWidth),
+            static_cast<float>(mapRow * tileHeight),
+            static_cast<float>(tileWidth),
+            static_cast<float>(tileHeight)
+        });
+    }
+
+    TraceLog(LOG_INFO, "LEVEL: %d plataformas creadas", static_cast<int>(platforms.size()));
     return true;
 }
 
@@ -117,10 +136,6 @@ void Level::init(int screenWidth, int screenHeight)
 {
     const float floorHeight = 180.0f;
     const float groundY = screenHeight - floorHeight;
-
-    platforms.clear();
-    platforms.push_back({0.0f, groundY, 110.0f, floorHeight});
-    platforms.push_back({180.0f, groundY, static_cast<float>(screenWidth) - 180.0f, floorHeight});
 
     playerSpawn = {30.0f, groundY - 50.0f, 40.0f, 40.0f};
     enemySpawn  = {220.0f, groundY - 40.0f, 40.0f, 40.0f};
@@ -160,12 +175,19 @@ void Level::render() const
 
 float Level::getPlatformY(Rectangle rect) const
 {
+    const float feet = rect.y + rect.height;
+    float bestY = -1.0f;  
+
     for (const auto& platform : platforms) {
         bool overlapX = (rect.x + rect.width > platform.x) &&
                         (rect.x < platform.x + platform.width);
-        if (overlapX) {
-            return platform.y;  // La Y de la plataforma concreta
+        bool belowFeet = platform.y >= feet - 8.0f;  // margen
+
+        if (overlapX && belowFeet) {
+            if (bestY < 0.0f || platform.y < bestY) {
+                bestY = platform.y;
+            }
         }
     }
-    return -1.0f;  // No está sobre ninguna plataforma
+    return bestY;  
 }
