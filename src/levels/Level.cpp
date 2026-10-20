@@ -119,6 +119,11 @@ bool Level::load(const string& tmxPath)
     }
 
     TraceLog(LOG_INFO, "LEVEL: %d plataformas creadas", static_cast<int>(platforms.size()));
+
+    const float groundY = 14.0f * tileHeight;
+
+    playerSpawn = {30.0f, groundY - 40.0f, 40.0f, 40.0f};
+    enemySpawn  = {800.0f, groundY - 40.0f, 40.0f, 40.0f};
     return true;
 }
 
@@ -130,15 +135,6 @@ void Level::unload()
     }
     tiles.clear();
     platforms.clear();
-}
-
-void Level::init(int screenWidth, int screenHeight)
-{
-    const float floorHeight = 180.0f;
-    const float groundY = screenHeight - floorHeight;
-
-    playerSpawn = {30.0f, groundY - 50.0f, 40.0f, 40.0f};
-    enemySpawn  = {220.0f, groundY - 40.0f, 40.0f, 40.0f};
 }
 
 void Level::render() const
@@ -178,7 +174,9 @@ float Level::getPlatformY(Rectangle rect) const
     const float feet = rect.y + rect.height;
     float bestY = -1.0f;  
 
-    for (const auto& platform : platforms) {
+    for (int i = 0; i < static_cast<int>(platforms.size()); i++) {
+        const Rectangle& platform = platforms[i];
+
         bool overlapX = (rect.x + rect.width > platform.x) &&
                         (rect.x < platform.x + platform.width);
         bool belowFeet = platform.y >= feet - 8.0f;  // margen

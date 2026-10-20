@@ -18,8 +18,6 @@ class Level {
 public:
     Level() = default;
 
-    void init(int screenWidth, int screenHeight);
-
     // Carga el mapa desde un archivo .tmx de Tiled. Devuelve false si falla.
     bool load(const std::string& tmxPath);
     // Libera la textura del tileset y vacía los datos del mapa.
