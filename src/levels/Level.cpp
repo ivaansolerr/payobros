@@ -1,4 +1,5 @@
 #include "Level.hpp"
+#include "core/PhysicsUnits.hpp"
 #include <sstream>
 using namespace std;
 
@@ -135,6 +136,40 @@ void Level::unload()
     }
     tiles.clear();
     platforms.clear();
+}
+
+void Level::createPhysicsBodies(b2World& world)
+{
+    clearPhysicsBodies(world);
+
+    for (const Rectangle& platform : platforms) {
+        b2BodyDef bodyDefinition;
+        bodyDefinition.position = PhysicsUnits::ToMeters({
+            platform.x + platform.width * 0.5f,
+            platform.y + platform.height * 0.5f
+        });
+        b2Body* body = world.CreateBody(&bodyDefinition);
+
+        b2PolygonShape shape;
+        shape.SetAsBox(
+            platform.width / (2.0f * PhysicsUnits::PIXELS_PER_METER),
+            platform.height / (2.0f * PhysicsUnits::PIXELS_PER_METER));
+
+        b2FixtureDef fixtureDefinition;
+        fixtureDefinition.shape = &shape;
+        fixtureDefinition.friction = 0.0f;
+        fixtureDefinition.filter.categoryBits = PhysicsUnits::PLATFORM_CATEGORY;
+        body->CreateFixture(&fixtureDefinition);
+        physicsBodies.push_back(body);
+    }
+}
+
+void Level::clearPhysicsBodies(b2World& world)
+{
+    for (b2Body* body : physicsBodies) {
+        world.DestroyBody(body);
+    }
+    physicsBodies.clear();
 }
 
 void Level::render() const

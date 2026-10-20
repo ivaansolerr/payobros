@@ -3,6 +3,9 @@
 #include <string>
 #include <vector>
 
+class b2Body;
+class b2World;
+
 // Contiene los datos geométricos de un nivel: plataformas y puntos de spawn.
 // Para añadir un nuevo nivel, basta con crear otra instancia de Level
 // con diferentes plataformas y spawn points.
@@ -23,6 +26,9 @@ public:
     // Libera la textura del tileset y vacía los datos del mapa.
     void unload();
 
+    void createPhysicsBodies(b2World& world);
+    void clearPhysicsBodies(b2World& world);
+
     void render() const;
 
     // Devuelve la Y de la plataforma sobre la que está el rectángulo,
@@ -37,6 +43,7 @@ public:
 
 private:
     std::vector<Rectangle> platforms;
+    std::vector<b2Body*> physicsBodies;
 
     // Datos del mapa leídos del .tmx
     int mapWidth = 0, mapHeight = 0;     // en tiles

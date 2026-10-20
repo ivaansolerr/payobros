@@ -4,7 +4,7 @@
 
 namespace MathUtils {
 
-// Normaliza un vector 2D; si su longitud es cercana a cero devuelve un vector por defecto
+// normaliza vector 2D
 inline Vector2 Normalize(Vector2 v, Vector2 defaultDir = { 1.0f, 0.0f })
 {
     float len = sqrt(v.x * v.x + v.y * v.y);
@@ -14,7 +14,7 @@ inline Vector2 Normalize(Vector2 v, Vector2 defaultDir = { 1.0f, 0.0f })
     return defaultDir;
 }
 
-// Desplaza una posición linealmente según dirección, velocidad y deltaTime
+// mueve entidades/objetos
 inline Vector2 Move(Vector2 current, Vector2 direction, float speed, float deltaTime)
 {
     return {

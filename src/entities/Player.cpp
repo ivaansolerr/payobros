@@ -10,6 +10,7 @@ void Player::init(float x, float y, float width, float height,
     velocityY = 0.0f;
     grounded = false;
     inputDirectionX = 0.0f;
+    facingDirectionX = 1.0f;
     jumpRequested = false;
 }
 
@@ -22,6 +23,9 @@ void Player::handleInput()
 
     if (IsKeyDown(keys.left))  inputDirectionX -= 1.0f;
     if (IsKeyDown(keys.right)) inputDirectionX += 1.0f;
+    if (inputDirectionX != 0.0f) {
+        facingDirectionX = inputDirectionX > 0.0f ? 1.0f : -1.0f;
+    }
 
     if (IsKeyPressed(keys.jump) ||
         (keys.jumpAlt >= 0 && IsKeyPressed(keys.jumpAlt))) {
@@ -81,6 +85,12 @@ void Player::render() const
 Vector2 Player::getCenter() const
 {
     return {bounds.x + bounds.width / 2.0f, bounds.y + bounds.height / 2.0f};
+}
+
+Vector2 Player::getWeaponOrigin() const
+{
+    float muzzleX = facingDirectionX > 0.0f ? bounds.x + bounds.width : bounds.x;
+    return {muzzleX, bounds.y + bounds.height / 2.0f};
 }
 
 bool Player::hasFallenOff(int screenHeight) const
