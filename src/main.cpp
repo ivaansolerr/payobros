@@ -5,8 +5,8 @@
 
 int main()
 { 
-    const int screenWidth = 800;
-    const int screenHeight = 450;
+    const int screenWidth = 960;
+    const int screenHeight = 640;
 
     InitWindow(screenWidth, screenHeight, "Bienvenido a PayoBros");
     SetTargetFPS(60);

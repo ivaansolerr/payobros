@@ -17,7 +17,7 @@ void PlayState::init() {
     weapon2.clear();
     level.clearPhysicsBodies(physicsWorld);
     physicsAccumulator = 0.0f;
-    level.init(screenWidth, screenHeight);
+    level.load("src/assets/psoe.tmx");
     level.createPhysicsBodies(physicsWorld);
 
     SpawnPoint ps = level.getPlayerSpawn();
@@ -60,6 +60,7 @@ void PlayState::handleInput()
 
     if (IsKeyPressed(KEY_M)) {
         if (stateMachine) {
+            level.unload();
             stateMachine->removeState(false);
             return;
         }
