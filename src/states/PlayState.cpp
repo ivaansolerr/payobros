@@ -52,6 +52,11 @@ void PlayState::init() {
     selectedWeapon = &weapon1;
     gameOver = false;
     restartRequested = false;
+
+    camera.offset = { static_cast<float>(screenWidth) / 2.0f, 0.0f }; // El objetivo quedará centrado horizontalmente
+    camera.target = { player1.getBounds().x, 0.0f };
+    camera.rotation = 0.0f;
+    camera.zoom = 1.0f;
 }
 
 void PlayState::handleInput()
@@ -99,9 +104,10 @@ void PlayState::update(float deltaTime)
 {
 
     if (!gameOver) {
+        const float mapWidth = level.getWidth();
         if (player1.isAlive()) {
             float platformY1 = level.getPlatformY(player1.getBounds());
-            player1.update(deltaTime, platformY1, screenWidth);
+            player1.update(deltaTime, platformY1, mapWidth);
 
             if (player1.hasFallenOff(screenHeight)) {
                 player1.kill();
@@ -114,7 +120,7 @@ void PlayState::update(float deltaTime)
 
         if (numPlayers >= 2 && player2.isAlive()) {
             float platformY2 = level.getPlatformY(player2.getBounds());
-            player2.update(deltaTime, platformY2, screenWidth);
+            player2.update(deltaTime, platformY2, mapWidth);
 
             if (player2.hasFallenOff(screenHeight)) {
                 player2.kill();
@@ -141,8 +147,35 @@ void PlayState::update(float deltaTime)
             physicsWorld.Step(physicsTimeStep, 8, 3);
             physicsAccumulator -= physicsTimeStep;
         }
+
         weapon1.update(deltaTime);
         weapon2.update(deltaTime);
+
+        float targetX = player1.getBounds().x + player1.getBounds().width * 0.5f;
+
+        // Si hay 2 jugadores vivos, centrar la cámara en el punto medio de ambos
+        if (numPlayers >= 2 && player1.isAlive() && player2.isAlive()) {
+            float p2X = player2.getBounds().x + player2.getBounds().width * 0.5f;
+            targetX = (targetX + p2X) * 0.5f;
+        }
+
+        // Suavizado de cámara (lerp)
+        camera.target.x += (targetX - camera.target.x) * (deltaTime * 5.0f);
+        camera.target.y = 0.0f; // Scroll estrictamente horizontal
+
+        // Limitar para que la vista no se salga de los bordes izquierdo y derecho del mapa
+        float halfScreenWidth = (screenWidth / 2.0f) / camera.zoom;
+        float mapWidthPx = level.getWidth();
+
+        if (mapWidthPx > screenWidth) {
+            if (camera.target.x - halfScreenWidth < 0.0f) {
+                camera.target.x = halfScreenWidth;
+            } else if (camera.target.x + halfScreenWidth > mapWidthPx) {
+                camera.target.x = mapWidthPx - halfScreenWidth;
+            }
+        } else {
+            camera.target.x = mapWidthPx * 0.5f;
+        }
 
         if (enemy.isAlive()) {
             for (Weapon* currentWeapon : {&weapon1, &weapon2}) {
@@ -171,18 +204,22 @@ void PlayState::render()
     BeginDrawing();
         ClearBackground(RAYWHITE);
 
-        // Nivel (plataformas)
-        level.render();
+        BeginMode2D(camera);
 
-        // Entidades
-        enemy.render();
-        player1.render();
-        if (numPlayers >= 2) {
-            player2.render();
-        }
+            // Nivel (plataformas)
+            level.render();
 
-        weapon1.renderProjectiles();
-        weapon2.renderProjectiles();
+            // Entidades
+            enemy.render();
+            player1.render();
+            if (numPlayers >= 2) {
+                player2.render();
+            }
+
+            weapon1.renderProjectiles();
+            weapon2.renderProjectiles();
+
+        EndMode2D();
 
         // UI
         if (!gameOver) {

@@ -37,6 +37,7 @@ private:
     WeaponConfig straightWeaponConfig = {};
     WeaponConfig bouncingWeaponConfig = {};
     Level level;
+    Camera2D camera = { 0 }; // scroll lateral
 
     bool bouncingWeaponSelected = false;
     bool gameOver = false;
