@@ -1,4 +1,5 @@
 #include "PlayState.hpp"
+#include "VictoryState.hpp"
 #include "core/StateMachine.hpp"
 #include <algorithm>
 
@@ -136,6 +137,18 @@ void PlayState::update(float deltaTime) {
     } else {
       if (!player1.isAlive() || !player2.isAlive()) {
         gameOver = true;
+      }
+    }
+
+    const float goalX = mapWidth - player1.getBounds().width - 10.0f;
+    bool p1Reached = player1.isAlive() && (player1.getBounds().x >= goalX);
+    bool p2Reached = (numPlayers >= 2) && player2.isAlive() &&
+                     (player2.getBounds().x >= goalX);
+    if (p1Reached || p2Reached) {
+      if (stateMachine) {
+        level.unload();
+        stateMachine->addState(std::make_unique<VictoryState>(), true);
+        return;
       }
     }
 
