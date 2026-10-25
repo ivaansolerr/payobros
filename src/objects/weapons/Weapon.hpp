@@ -7,6 +7,8 @@
 #include <raylib.h>
 #include <vector>
 
+using namespace std;
+
 class Weapon {
 public:
   explicit Weapon(WeaponConfig config = {});
@@ -24,15 +26,15 @@ public:
   int getMagazineCapacity() const { return config.magazineCapacity; }
   bool isReloading() const { return reloadRemaining > 0.0f; }
 
-  std::vector<std::unique_ptr<Projectile>> &getProjectiles() {
+  vector<unique_ptr<Projectile>> &getProjectiles() {
     return projectiles;
   }
-  const std::vector<std::unique_ptr<Projectile>> &getProjectiles() const {
+  const vector<unique_ptr<Projectile>> &getProjectiles() const {
     return projectiles;
   }
 
 private:
-  std::vector<std::unique_ptr<Projectile>> projectiles;
+  vector<unique_ptr<Projectile>> projectiles;
   WeaponConfig config;
   float cooldownRemaining = 0.0f;
   float reloadRemaining = 0.0f;

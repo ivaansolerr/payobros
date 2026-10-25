@@ -2,9 +2,13 @@
 #include "core/MathUtils.hpp"
 #include "core/PhysicsUnits.hpp"
 
-Projectile::Projectile(b2World &world, Vector2 startPos, Vector2 direction,
-                       ProjectileConfig config)
-    : position(startPos), config(config), world(&world) {
+using namespace std;
+
+Projectile::Projectile(b2World &world, Vector2 startPos, Vector2 direction, ProjectileConfig config){
+  this->position = startPos;
+  this->config = config;
+  this->world = &world;
+
   b2BodyDef bodyDefinition;
   bodyDefinition.type = b2_dynamicBody;
   bodyDefinition.position = PhysicsUnits::ToMeters(startPos);
