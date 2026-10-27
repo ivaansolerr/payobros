@@ -6,29 +6,30 @@
 
 class Projectile {
 public:
-    Projectile(b2World& world, Vector2 startPos, Vector2 direction, ProjectileConfig config = {});
-    ~Projectile();
+  Projectile(b2World &world, Vector2 startPos, Vector2 direction,
+             ProjectileConfig config = {});
+  ~Projectile();
 
-    Projectile(const Projectile&) = delete;
-    Projectile& operator=(const Projectile&) = delete;
+  Projectile(const Projectile &) = delete;
+  Projectile &operator=(const Projectile &) = delete;
 
-    void update(float deltaTime);
-    void render() const;
+  void update(float deltaTime, int mapWidth);
+  void render() const;
 
-    bool isActive() const { return active; }
-    void deactivate();
+  bool isActive() const { return active; }
+  void deactivate();
 
-    Vector2 getPosition() const { return position; }
-    float getRadius() const { return config.radius; }
+  Vector2 getPosition() const { return position; }
+  float getRadius() const { return config.radius; }
 
-    bool checkCollision(Rectangle rec) const;
+  bool checkCollision(Rectangle rec) const;
 
 private:
-    Vector2 position;
-    ProjectileConfig config;
-    b2World* world;
-    b2Body* body = nullptr;
-    int bounceCount = 0;
-    bool touchingPlatform = false;
-    bool active = true;
+  Vector2 position;
+  ProjectileConfig config;
+  b2World *world;
+  b2Body *body = nullptr;
+  int bounceCount = 0;
+  bool touchingPlatform = false;
+  bool active = true;
 };
