@@ -128,6 +128,20 @@ void PlayState::update(float deltaTime) {
       }
     }
 
+    // Recolección de cajas de munición
+    for (auto &box : level.getAmmoBoxes()) {
+      if (!box.active) continue;
+
+      bool collectedByP1 = player1.isAlive() && CheckCollisionRecs(player1.getBounds(), box.bounds);
+      bool collectedByP2 = (numPlayers >= 2) && player2.isAlive() && CheckCollisionRecs(player2.getBounds(), box.bounds);
+
+      if (collectedByP1 || collectedByP2) {
+        box.active = false;
+        weapon1.refillAmmo();
+        weapon2.refillAmmo();
+      }
+    }
+
     if (numPlayers == 1) {
       if (!player1.isAlive()) {
         gameOver = true;

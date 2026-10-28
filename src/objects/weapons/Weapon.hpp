@@ -25,6 +25,7 @@ public:
   int getAmmoInMagazine() const { return ammoInMagazine; }
   int getMagazineCapacity() const { return config.magazineCapacity; }
   bool isReloading() const { return reloadRemaining > 0.0f; }
+  void refillAmmo();
 
   vector<unique_ptr<Projectile>> &getProjectiles() {
     return projectiles;

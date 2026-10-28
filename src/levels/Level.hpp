@@ -19,6 +19,13 @@ struct SpawnPoint {
     float height;
 };
 
+// Estructura para la caja de munición
+struct AmmoBox {
+    Rectangle bounds;
+    int gid;         // Para saber qué tile dibujar
+    bool active = true;
+};
+
 class Level {
 public:
     Level() = default;
@@ -46,9 +53,14 @@ public:
     // Ancho del mapa en píxeles
     float getWidth() const { return static_cast<float>(mapWidth * tileWidth); }
 
+    // Acceso a las cajas de munición para PlayState
+    vector<AmmoBox>& getAmmoBoxes() { return ammoBoxes; }
+    const vector<AmmoBox>& getAmmoBoxes() const { return ammoBoxes; }
+
 private:
     vector<Rectangle> platforms;
     vector<b2Body*> physicsBodies;
+    vector<AmmoBox> ammoBoxes;
 
     // Datos del mapa leídos del .tmx
     int mapWidth = 0, mapHeight = 0;     // en tiles
