@@ -122,8 +122,8 @@ void PlayState::update(float deltaTime) {
       }
     }
 
-    // Colisión de los jugadores contra cualquier enemigo vivo
-    for (const auto &enemy : enemies) {
+    // Colisión de los jugadores contra cualquier enemigo vivo (pisar para matar / colisión lateral)
+    for (auto &enemy : enemies) {
       if (!enemy.isAlive()) continue;
 
       Rectangle eb = enemy.getBounds();
@@ -131,15 +131,12 @@ void PlayState::update(float deltaTime) {
       if (player1.isAlive() && CheckCollisionRecs(player1.getBounds(), eb)) {
         Rectangle pb = player1.getBounds();
         float playerFeet = pb.y + pb.height;
-        
-        // Comprobar si los pies del jugador están cerca del borde superior del enemigo
-        // y el jugador venía cayendo
+
         bool stomping = player1.isFalling() && (playerFeet <= eb.y + 14.0f);
 
         if (stomping) {
-          player1.bounceOnEnemy(eb.y, true); // true para botar, false para pararse en seco
-          // si quisieramos matar al enemigo al pisarlo:
-          // enemy.kill(); 
+          player1.bounceOnEnemy(eb.y, true);
+          enemy.kill();
         } else {
           player1.kill();
         }
@@ -153,6 +150,7 @@ void PlayState::update(float deltaTime) {
 
         if (stomping) {
           player2.bounceOnEnemy(eb.y, true);
+          enemy.kill();
         } else {
           player2.kill();
         }
@@ -206,11 +204,28 @@ void PlayState::update(float deltaTime) {
 
         enemy.update(deltaTime, targetPos, level);
 
+        // Comprobación de muerte por toque lateral tras el movimiento del enemigo
         if (player1.isAlive() && CheckCollisionRecs(player1.getBounds(), enemy.getBounds())) {
-          player1.kill();
+          Rectangle pb = player1.getBounds();
+          float playerFeet = pb.y + pb.height;
+          bool stomping = player1.isFalling() && (playerFeet <= enemy.getBounds().y + 14.0f);
+          if (stomping) {
+            player1.bounceOnEnemy(enemy.getBounds().y, true);
+            enemy.kill();
+          } else {
+            player1.kill();
+          }
         }
         if (numPlayers >= 2 && player2.isAlive() && CheckCollisionRecs(player2.getBounds(), enemy.getBounds())) {
-          player2.kill();
+          Rectangle pb = player2.getBounds();
+          float playerFeet = pb.y + pb.height;
+          bool stomping = player2.isFalling() && (playerFeet <= enemy.getBounds().y + 14.0f);
+          if (stomping) {
+            player2.bounceOnEnemy(enemy.getBounds().y, true);
+            enemy.kill();
+          } else {
+            player2.kill();
+          }
         }
       }
     }
@@ -233,9 +248,6 @@ void PlayState::update(float deltaTime) {
       physicsWorld.Step(physicsTimeStep, 8, 3);
       physicsAccumulator -= physicsTimeStep;
     }
-
-    weapon1.update(deltaTime, mapWidth);
-    weapon2.update(deltaTime, mapWidth);
 
     float targetX = player1.getBounds().x + player1.getBounds().width * 0.5f;
 
@@ -262,6 +274,17 @@ void PlayState::update(float deltaTime) {
     } else {
       camera.target.x = mapWidthPx * 0.5f;
     }
+
+    // Campo de visión de la cámara en coordenadas del mundo
+    float visibleWidth = screenWidth / camera.zoom;
+    float visibleHeight = screenHeight / camera.zoom;
+    float cameraLeft = camera.target.x - (camera.offset.x / camera.zoom);
+    float cameraTop = camera.target.y - (camera.offset.y / camera.zoom);
+    Rectangle cameraView = { cameraLeft, cameraTop, visibleWidth, visibleHeight };
+
+    // Actualización de armas con colisión de terreno y límite de cámara
+    weapon1.update(deltaTime, level, cameraView);
+    weapon2.update(deltaTime, level, cameraView);
 
     // Impacto de balas contra los enemigos
     for (Weapon *currentWeapon : {&weapon1, &weapon2}) {

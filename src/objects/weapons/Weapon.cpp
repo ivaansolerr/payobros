@@ -1,5 +1,6 @@
 #include "Weapon.hpp"
 #include <algorithm>
+#include "levels/Level.hpp"
 
 using namespace std;
 
@@ -27,7 +28,7 @@ bool Weapon::shoot(Vector2 origin, Vector2 direction, b2World &world) {
   return true;
 }
 
-void Weapon::update(float deltaTime, int mapWidth) {
+void Weapon::update(float deltaTime, const Level& level, Rectangle cameraView) {
   cooldownRemaining -= deltaTime;
 
   if (reloadRemaining > 0.0f) {
@@ -38,14 +39,32 @@ void Weapon::update(float deltaTime, int mapWidth) {
     }
   }
 
-  for (unsigned i = 0; i < this->projectiles.size(); i++){
-    Projectile &projectile = *this->projectiles[i];
-    projectile.update(deltaTime, mapWidth);
+  for (auto &projectile : projectiles) {
+    if (!projectile->isActive()) continue;
+
+    projectile->update(deltaTime, static_cast<int>(level.getWidth()));
+
+    Rectangle pBounds = projectile->getBounds();
+
+    if (level.checkCollision(pBounds)) {
+      projectile->deactivate();
+      continue;
+    }
+
+    bool outsideCamera = (pBounds.x + pBounds.width < cameraView.x) ||
+                         (pBounds.x > cameraView.x + cameraView.width) ||
+                         (pBounds.y + pBounds.height < cameraView.y) ||
+                         (pBounds.y > cameraView.y + cameraView.height);
+
+    if (outsideCamera) {
+      projectile->deactivate();
+    }
   }
 
+  // Eliminar proyectiles desactivados
   projectiles.erase(
-      remove_if(projectiles.begin(), projectiles.end(),
-                     [](const unique_ptr<Projectile> &projectile) {
+      std::remove_if(projectiles.begin(), projectiles.end(),
+                     [](const std::unique_ptr<Projectile> &projectile) {
                        return !projectile->isActive();
                      }),
       projectiles.end());
