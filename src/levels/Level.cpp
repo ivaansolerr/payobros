@@ -225,3 +225,13 @@ float Level::getPlatformY(Rectangle rect) const
     }
     return bestY;  
 }
+
+const Rectangle* Level::checkCollision(Rectangle rect) const
+{
+    for (const Rectangle& platform : platforms) {
+        if (CheckCollisionRecs(rect, platform)) {
+            return &platform;
+        }
+    }
+    return nullptr;
+}
