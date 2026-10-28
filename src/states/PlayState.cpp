@@ -1,5 +1,6 @@
 #include "PlayState.hpp"
 #include "VictoryState.hpp"
+#include "PauseState.hpp"
 #include "core/StateMachine.hpp"
 #include <algorithm>
 
@@ -59,11 +60,19 @@ void PlayState::init() {
                    0.0f}; // El objetivo quedará centrado horizontalmente
   camera.target = {player1.getBounds().x, 0.0f};
   camera.rotation = 0.0f;
-  camera.zoom = 1.0f;
+  float scaleY = static_cast<float>(screenHeight) / 640.0f;
+  camera.zoom = scaleY > 0.0f ? scaleY : 1.0f;
 }
 
 void PlayState::handleInput() {
   restartRequested = false;
+
+  if (IsKeyPressed(KEY_ESCAPE)) {
+    if (stateMachine) {
+      stateMachine->addState(std::make_unique<PauseState>(), false);
+      return;
+    }
+  }
 
   if (IsKeyPressed(KEY_M)) {
     if (stateMachine) {
@@ -106,10 +115,11 @@ void PlayState::update(float deltaTime) {
 
   if (!gameOver) {
     const float mapWidth = level.getWidth();
+    const float mapHeightPx = level.getHeight();
     if (player1.isAlive()) {
       player1.update(deltaTime, level, mapWidth);
 
-      if (player1.hasFallenOff(screenHeight)) {
+      if (player1.hasFallenOff(mapHeightPx)) {
         player1.kill();
       }
     }
@@ -117,7 +127,7 @@ void PlayState::update(float deltaTime) {
     if (numPlayers >= 2 && player2.isAlive()) {
       player2.update(deltaTime, level, mapWidth);
 
-      if (player2.hasFallenOff(screenHeight)) {
+      if (player2.hasFallenOff(mapHeightPx)) {
         player2.kill();
       }
     }
@@ -257,6 +267,10 @@ void PlayState::update(float deltaTime) {
       targetX = (targetX + p2X) * 0.5f;
     }
 
+    float scaleY = static_cast<float>(screenHeight) / (mapHeightPx > 0.0f ? mapHeightPx : 640.0f);
+    camera.zoom = scaleY > 0.0f ? scaleY : 1.0f;
+    camera.offset = {static_cast<float>(screenWidth) / 2.0f, 0.0f};
+
     // Suavizado de cámara (lerp)
     camera.target.x += (targetX - camera.target.x) * (deltaTime * 5.0f);
     camera.target.y = 0.0f; // Scroll estrictamente horizontal
@@ -265,7 +279,7 @@ void PlayState::update(float deltaTime) {
     float halfScreenWidth = (screenWidth / 2.0f) / camera.zoom;
     float mapWidthPx = level.getWidth();
 
-    if (mapWidthPx > screenWidth) {
+    if (mapWidthPx > (screenWidth / camera.zoom)) {
       if (camera.target.x - halfScreenWidth < 0.0f) {
         camera.target.x = halfScreenWidth;
       } else if (camera.target.x + halfScreenWidth > mapWidthPx) {
@@ -309,7 +323,6 @@ void PlayState::update(float deltaTime) {
 
 void PlayState::render() {
 
-  BeginDrawing();
   ClearBackground(RAYWHITE);
 
   BeginMode2D(camera);
@@ -394,5 +407,4 @@ void PlayState::render() {
     DrawText("Presiona M para volver al men\u00fa", screenWidth / 2 - 125,
              screenHeight / 2 + 25, 16, DARKGRAY);
   }
-  EndDrawing();
 }

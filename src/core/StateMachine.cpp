@@ -14,18 +14,47 @@ void StateMachine::removeState(bool endGame)
     ending = endGame;
 }
 
+void StateMachine::clearToRoot()
+{
+    clearingToRoot = true;
+}
+
+GameState* StateMachine::getStateBelow()
+{
+    if (states.size() >= 2)
+    {
+        return states[states.size() - 2].get();
+    }
+    return nullptr;
+}
+
 void StateMachine::handleStateChanges(float& deltaTime)
 {
+    if (clearingToRoot)
+    {
+        while (states.size() > 1)
+        {
+            states.pop_back();
+        }
+        clearingToRoot = false;
+
+        if (!states.empty())
+        {
+            states.back()->resume();
+        }
+        deltaTime = 0.0f;
+    }
+
     if (removing && !states.empty())
     {
-        states.pop();
+        states.pop_back();
         removing = false;
 
         if (!adding)
         {
             if (!states.empty())
             {
-                states.top()->resume();
+                states.back()->resume();
             }
             deltaTime = 0.0f;
         }
@@ -37,12 +66,16 @@ void StateMachine::handleStateChanges(float& deltaTime)
         {
             if (replacing)
             {
-                states.pop();
+                states.pop_back();
+            }
+            else
+            {
+                states.back()->pause();
             }
         }
 
-        states.push(std::move(pendingState));
-        states.top()->init();
+        states.push_back(std::move(pendingState));
+        states.back()->init();
         adding = false;
         deltaTime = 0.0f;
     }
