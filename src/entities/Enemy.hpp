@@ -1,12 +1,14 @@
 #pragma once
 #include <raylib.h>
 
+class Level;
+
 class Enemy {
 public:
   Enemy() = default;
 
   void init(float x, float y, float width, float height);
-  void update(float deltaTime, Vector2 targetPos);
+  void update(float deltaTime, Vector2 targetPos, const Level &level);
   void render() const;
 
   Rectangle getBounds() const { return bounds; }
@@ -19,6 +21,6 @@ public:
 private:
   Rectangle bounds = {0, 0, 0, 0};
   bool alive = true;
-  const float MOVE_SPEED = 70.0f;
+  const float MOVE_SPEED = 100.0f;
   const float DETECTION_RADIUS = 200.0f;
 };

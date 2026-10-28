@@ -157,7 +157,7 @@ void PlayState::update(float deltaTime) {
         }
       }
       if (player1.isAlive() || (numPlayers >= 2 && player2.isAlive())) {
-        enemy.update(deltaTime, targetPos);
+        enemy.update(deltaTime, targetPos, level);
         if (player1.isAlive() &&
             CheckCollisionRecs(player1.getBounds(), enemy.getBounds())) {
           player1.kill();
@@ -203,7 +203,8 @@ void PlayState::update(float deltaTime) {
     camera.target.x += (targetX - camera.target.x) * (deltaTime * 5.0f);
     camera.target.y = 0.0f; // Scroll estrictamente horizontal
 
-    // Limitar para que la vista no se salga de los bordes izquierdo y derecho del mapa
+    // Limitar para que la vista no se salga de los bordes izquierdo y derecho
+    // del mapa
     float halfScreenWidth = (screenWidth / 2.0f) / camera.zoom;
     float mapWidthPx = level.getWidth();
 
