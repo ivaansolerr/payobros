@@ -1,6 +1,6 @@
 """Triaje de issues con Jev.
 
-Lo ejecuta el workflow `.github/workflows/triage.yml` cada vez que se abre una
+Lo ejecuta el workflow `.github/workflows/bugtracking.yml` cada vez que se abre una
 issue: le hace a Jev (vía OpenRouter) cinco preguntas sobre la issue y aplica
 las etiquetas en las que Jev está seguro. Si no lo está, añade `needs-triage`.
 """
@@ -15,7 +15,23 @@ MODEL = "typesafe/jev-1.13"
 
 MIN_CONFIDENCE = 0.6  # choice/score: por debajo no se etiqueta y se pide revisión
 MIN_YES = 0.8  # noul: probabilidad de "sí" a partir de la cual se etiqueta
-SEVERITY = ["low", "medium", "high", "critical"]  # el índice es el valor del score
+SEVERITY = ["wishlist", "low", "medium", "high", "critical"]  # el índice es el valor del score
+
+# cOLORES
+MORADO = "6f42c1"
+VERDE = "0e8a16"  
+AMARILLO = "fbca04"  
+NARANJA = "d93f0b"  
+ROJO = "b60205"  
+
+# DICCIONARIO PARA ASIGNAR A CADA SEVERIDAD SU COLOR
+SEVERITY_COLORS = {
+    "wishlist": MORADO,
+    "low": VERDE,
+    "medium": AMARILLO,
+    "high": NARANJA,
+    "critical": ROJO,
+}
 
 QUESTIONS = {
     "tipo": {
@@ -31,10 +47,12 @@ QUESTIONS = {
     "severidad": {
         "type": "score",
         "instructions": (
-            "¿Qué gravedad tiene el defecto descrito en `issue`? "
-            "Si no describe un defecto, responde el nivel más bajo."
+            "¿Qué gravedad tiene el defecto o solicitud descrita en `issue`? "
+            "Para funcionalidades muy complejas o deseos, responde wishlist. "
+            "Si no describe un defecto ni una funcionalidad compleja, responde el nivel más bajo."
         ),
         "criteria": [
+            "wishlist: funcionalidades muy complejas o deseos",
             "low: problema estético o menor, sin impacto en el uso",
             "medium: la función falla pero existe un contorno sencillo",
             "high: una función importante falla y no hay contorno conocido",
@@ -90,7 +108,7 @@ def ask_jev(state):
 
 def decide(answers):
     labels = []
-    sure = True
+    sure = True  # Se pide revisión si es False
 
     tipo = answers["tipo"]
     if tipo["confidence"] >= MIN_CONFIDENCE:
@@ -98,15 +116,18 @@ def decide(answers):
     else:
         sure = False
 
-    # La severidad y la falta de información solo tienen sentido en bugs.
+    # La severidad aplica a bugs y a funcionalidades complejas o deseos (wishlist).
+    sev = answers["severidad"]
     if "bug" in labels:
-        sev = answers["severidad"]
         if sev["confidence"] >= MIN_CONFIDENCE:
             labels.append("severity:" + SEVERITY[round(sev["score"])])
         else:
             sure = False
         if answers["falta_info"]["noul"] >= MIN_YES:
             labels.append("needs-info")
+    elif "feature" in labels:
+        if sev["confidence"] >= MIN_CONFIDENCE and SEVERITY[round(sev["score"])] == "wishlist":
+            labels.append("severity:wishlist")
 
     area = answers["area"]
     if area["choice"] != "indefinido" and area["confidence"] >= MIN_CONFIDENCE:
@@ -123,13 +144,34 @@ def decide(answers):
     return labels
 
 
+def crear_etiquetas(github, repo_url, labels):
+    r = github.get(f"{repo_url}/labels")
+    etiquetas_repo = r.json()
+
+    nombres_existentes = []
+    for e in etiquetas_repo:
+        nombres_existentes.append(e["name"])
+
+    for label in labels:
+        if label in nombres_existentes:
+            continue
+
+        # Si es una etiqueta de severidad, buscamos su color y la creamos
+        if label.startswith("severity:"):
+            sev = label.replace("severity:", "")
+            if sev in SEVERITY_COLORS:
+                color = SEVERITY_COLORS[sev]
+                github.post(f"{repo_url}/labels", json={"name": label, "color": color})
+
+
 def main():
     with open(os.environ["GITHUB_EVENT_PATH"]) as f:
         issue = json.load(f)["issue"]
 
     github = requests.Session()
     github.headers["Authorization"] = f"Bearer {os.environ['GITHUB_TOKEN']}"
-    api = f"https://api.github.com/repos/{os.environ['GITHUB_REPOSITORY']}/issues"
+    repo_url = f"https://api.github.com/repos/{os.environ['GITHUB_REPOSITORY']}"
+    api = f"{repo_url}/issues"
 
     # Jev solo evalúa lo que le mandamos, así que las candidatas a duplicado
     # (las 20 issues abiertas más recientes) van dentro del state.
@@ -148,6 +190,8 @@ def main():
     labels = decide(answers)
     print(json.dumps(answers, indent=2, ensure_ascii=False))
     print("Etiquetas:", labels)
+
+    crear_etiquetas(github, repo_url, labels)
 
     r = github.post(f"{api}/{issue['number']}/labels", json={"labels": labels}, timeout=30)
     r.raise_for_status()
