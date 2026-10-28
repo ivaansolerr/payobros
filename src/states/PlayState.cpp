@@ -16,7 +16,7 @@ void PlayState::init() {
   weapon2.clear();
   level.clearPhysicsBodies(physicsWorld);
   physicsAccumulator = 0.0f;
-  level.load("src/assets/psoe.tmx");
+  level.load("src/assets/fondo.tmx");
   level.createPhysicsBodies(physicsWorld);
 
   SpawnPoint ps = level.getPlayerSpawn();
