@@ -140,6 +140,37 @@ void PlayState::update(float deltaTime) {
       }
     }
 
+    if (enemy.isAlive()) {
+      Vector2 targetPos = player1.getCenter();
+      if (numPlayers >= 2 && player2.isAlive()) {
+        if (!player1.isAlive()) {
+          targetPos = player2.getCenter();
+        } else {
+          Vector2 ec = enemy.getCenter();
+          Vector2 p1c = player1.getCenter();
+          Vector2 p2c = player2.getCenter();
+          float dist1 =
+              (p1c.x - ec.x) * (p1c.x - ec.x) + (p1c.y - ec.y) * (p1c.y - ec.y);
+          float dist2 =
+              (p2c.x - ec.x) * (p2c.x - ec.x) + (p2c.y - ec.y) * (p2c.y - ec.y);
+          if (dist2 < dist1) {
+            targetPos = p2c;
+          }
+        }
+      }
+      if (player1.isAlive() || (numPlayers >= 2 && player2.isAlive())) {
+        enemy.update(deltaTime, targetPos);
+        if (player1.isAlive() &&
+            CheckCollisionRecs(player1.getBounds(), enemy.getBounds())) {
+          player1.kill();
+        }
+        if (numPlayers >= 2 && player2.isAlive() &&
+            CheckCollisionRecs(player2.getBounds(), enemy.getBounds())) {
+          player2.kill();
+        }
+      }
+    }
+
     const float goalX = mapWidth - player1.getBounds().width - 10.0f;
     bool p1Reached = player1.isAlive() && (player1.getBounds().x >= goalX);
     bool p2Reached = (numPlayers >= 2) && player2.isAlive() &&
