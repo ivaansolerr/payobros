@@ -5,6 +5,7 @@
 using namespace std;
 
 const int SOLID_GID = 1;
+const int AMMO_BOX_GID = 4;
 
 static string getAttr(const string& xml, const string& name, size_t tagStart)
 {
@@ -106,18 +107,35 @@ bool Level::load(const string& tmxPath)
              tsxFile.c_str(), tilesetColumns, imageFile.c_str());
 
     platforms.clear();
+    ammoBoxes.clear();
+    
     for (int i = 0; i < static_cast<int>(tiles.size()); i++) {  
-        if (tiles[i] != SOLID_GID) continue;
+        const int gid = tiles[i];
 
         const int mapColumn = i % mapWidth;
         const int mapRow = i / mapWidth;
 
-        platforms.push_back({
-            static_cast<float>(mapColumn * tileWidth),
-            static_cast<float>(mapRow * tileHeight),
-            static_cast<float>(tileWidth),
-            static_cast<float>(tileHeight)
-        });
+        const float posX = static_cast<float>(mapColumn * tileWidth);
+        const float posY = static_cast<float>(mapRow * tileHeight);
+
+        // Si es suelo sólido
+        if (gid == SOLID_GID) {
+            platforms.push_back({ 
+                posX, posY, 
+                static_cast<float>(tileWidth), 
+                static_cast<float>(tileHeight) 
+            });
+        }
+        // Si es caja de munición
+        else if (gid == AMMO_BOX_GID) {
+            ammoBoxes.push_back({
+                { posX, posY, static_cast<float>(tileWidth), static_cast<float>(tileHeight) },
+                gid,
+                true
+            });
+            // Ocultamos de tiles[] para que el render normal de terreno no lo pinte doble
+            tiles[i] = 0; 
+        }
     }
 
     TraceLog(LOG_INFO, "LEVEL: %d plataformas creadas", static_cast<int>(platforms.size()));
@@ -125,7 +143,12 @@ bool Level::load(const string& tmxPath)
     const float groundY = 14.0f * tileHeight;
 
     playerSpawn = {30.0f, groundY - 40.0f, 40.0f, 40.0f};
-    enemySpawn  = {800.0f, groundY - 40.0f, 40.0f, 40.0f};
+
+    enemySpawns.clear();
+
+    enemySpawns.push_back({1000.0f, 440.0f, 40.0f, 40.0f});
+    enemySpawns.push_back({2800.0f, 440.0f, 40.0f, 40.0f});
+
     return true;
 }
 
@@ -137,6 +160,8 @@ void Level::unload()
     }
     tiles.clear();
     platforms.clear();
+    ammoBoxes.clear(); 
+    enemySpawns.clear();
 }
 
 void Level::createPhysicsBodies(b2World& world)
@@ -175,16 +200,14 @@ void Level::clearPhysicsBodies(b2World& world)
 
 void Level::render() const
 {
+    // 1. Dibujar tiles estáticos normales
     for (int i = 0; i < static_cast<int>(tiles.size()); i++){
         const int gid = tiles[i];
-
         if (gid == 0) continue;
 
         const int id = gid - firstGid;
-
         const int tileColumn = id % tilesetColumns;
         const int tileRow = id / tilesetColumns;
-
         const int mapColumn =  i % mapWidth;
         const int mapRow = i / mapWidth;
 
@@ -194,15 +217,31 @@ void Level::render() const
             static_cast<float>(tileWidth),
             static_cast<float>(tileHeight)
         };
-
         const Vector2 pos = {
             static_cast<float>(mapColumn * tileWidth),
             static_cast<float>(mapRow * tileHeight)
         };
-
         DrawTextureRec(tileset, src, pos, WHITE);
     }
 
+    // 2. Dibujar cajas de munición que sigan activas
+    for (const auto& box : ammoBoxes) {
+        if (!box.active) continue;
+
+        const int id = box.gid - firstGid;
+        const int tileColumn = id % tilesetColumns;
+        const int tileRow = id / tilesetColumns;
+
+        const Rectangle src = {
+            static_cast<float>(tileColumn * tileWidth),
+            static_cast<float>(tileRow * tileHeight),
+            static_cast<float>(tileWidth),
+            static_cast<float>(tileHeight)
+        };
+        const Vector2 pos = { box.bounds.x, box.bounds.y };
+
+        DrawTextureRec(tileset, src, pos, WHITE);
+    }
 }
 
 float Level::getPlatformY(Rectangle rect) const
@@ -224,4 +263,14 @@ float Level::getPlatformY(Rectangle rect) const
         }
     }
     return bestY;  
+}
+
+const Rectangle* Level::checkCollision(Rectangle rect) const
+{
+    for (const Rectangle& platform : platforms) {
+        if (CheckCollisionRecs(rect, platform)) {
+            return &platform;
+        }
+    }
+    return nullptr;
 }

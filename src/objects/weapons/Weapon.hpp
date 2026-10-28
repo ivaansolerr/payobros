@@ -7,6 +7,8 @@
 #include <raylib.h>
 #include <vector>
 
+class Level;
+
 using namespace std;
 
 class Weapon {
@@ -14,7 +16,7 @@ public:
   explicit Weapon(WeaponConfig config = {});
 
   void handleInput(Vector2 origin, Vector2 direction, b2World &world);
-  void update(float deltaTime, int mapWidth);
+  void update(float deltaTime, const Level& level, Rectangle cameraView);
   void renderProjectiles() const;
 
   bool shoot(Vector2 origin, Vector2 direction, b2World &world);
@@ -25,6 +27,7 @@ public:
   int getAmmoInMagazine() const { return ammoInMagazine; }
   int getMagazineCapacity() const { return config.magazineCapacity; }
   bool isReloading() const { return reloadRemaining > 0.0f; }
+  void refillAmmo();
 
   vector<unique_ptr<Projectile>> &getProjectiles() {
     return projectiles;

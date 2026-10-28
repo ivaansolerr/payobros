@@ -5,10 +5,13 @@
 
 int main()
 { 
-    const int screenWidth = 960;
-    const int screenHeight = 640;
+    const int windowWidth = 960;
+    const int windowHeight = 640;
 
-    InitWindow(screenWidth, screenHeight, "Bienvenido a PayoBros");
+    // Permitir ventana redimensionable
+    SetConfigFlags(FLAG_WINDOW_RESIZABLE);
+    InitWindow(windowWidth, windowHeight, "Bienvenido a PayoBros");
+    SetExitKey(KEY_NULL); // Evitar que ESC cierre el juego para usarla en pausa
     SetTargetFPS(60);
 
     float deltaTime = 0.0f;
@@ -19,6 +22,12 @@ int main()
 
     while (!stateMachine.isGameEnding() && !WindowShouldClose())
     {
+        // Alternar pantalla completa con F11 (modo sin bordes para evitar parpadeos y pantalla negra)
+        if (IsKeyPressed(KEY_F11))
+        {
+            ToggleBorderlessWindowed();
+        }
+
         deltaTime = GetFrameTime();
         stateMachine.handleStateChanges(deltaTime);
 
@@ -29,7 +38,11 @@ int main()
 
         stateMachine.getCurrentState()->handleInput();
         stateMachine.getCurrentState()->update(deltaTime);
-        stateMachine.getCurrentState()->render();       
+
+        // BeginDrawing/EndDrawing centralizado: cada estado solo dibuja su contenido
+        BeginDrawing();
+        stateMachine.getCurrentState()->render();
+        EndDrawing();
     }
 
     CloseWindow();

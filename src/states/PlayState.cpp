@@ -1,5 +1,6 @@
 #include "PlayState.hpp"
 #include "VictoryState.hpp"
+#include "PauseState.hpp"
 #include "core/StateMachine.hpp"
 #include <algorithm>
 
@@ -30,8 +31,12 @@ void PlayState::init() {
     player2.init(ps.x + 45.0f, ps.y, ps.width, ps.height, keys2, BLUE);
   }
 
-  SpawnPoint es = level.getEnemySpawn();
-  enemy.init(es.x, es.y, es.width, es.height);
+  enemies.clear();
+  for (const SpawnPoint& sp : level.getEnemySpawns()) {
+    Enemy e;
+    e.init(sp.x, sp.y, sp.width, sp.height);
+    enemies.push_back(e);
+  }
 
   straightWeaponConfig = {};
   straightWeaponConfig.magazineCapacity = 20;
@@ -55,11 +60,19 @@ void PlayState::init() {
                    0.0f}; // El objetivo quedará centrado horizontalmente
   camera.target = {player1.getBounds().x, 0.0f};
   camera.rotation = 0.0f;
-  camera.zoom = 1.0f;
+  float scaleY = static_cast<float>(screenHeight) / 640.0f;
+  camera.zoom = scaleY > 0.0f ? scaleY : 1.0f;
 }
 
 void PlayState::handleInput() {
   restartRequested = false;
+
+  if (IsKeyPressed(KEY_ESCAPE)) {
+    if (stateMachine) {
+      stateMachine->addState(std::make_unique<PauseState>(), false);
+      return;
+    }
+  }
 
   if (IsKeyPressed(KEY_M)) {
     if (stateMachine) {
@@ -102,31 +115,69 @@ void PlayState::update(float deltaTime) {
 
   if (!gameOver) {
     const float mapWidth = level.getWidth();
+    const float mapHeightPx = level.getHeight();
     if (player1.isAlive()) {
-      float platformY1 = level.getPlatformY(player1.getBounds());
-      player1.update(deltaTime, platformY1, mapWidth);
+      player1.update(deltaTime, level, mapWidth);
 
-      if (player1.hasFallenOff(screenHeight)) {
-        player1.kill();
-      }
-
-      if (enemy.isAlive() &&
-          CheckCollisionRecs(player1.getBounds(), enemy.getBounds())) {
+      if (player1.hasFallenOff(mapHeightPx)) {
         player1.kill();
       }
     }
 
     if (numPlayers >= 2 && player2.isAlive()) {
-      float platformY2 = level.getPlatformY(player2.getBounds());
-      player2.update(deltaTime, platformY2, mapWidth);
+      player2.update(deltaTime, level, mapWidth);
 
-      if (player2.hasFallenOff(screenHeight)) {
+      if (player2.hasFallenOff(mapHeightPx)) {
         player2.kill();
       }
+    }
 
-      if (enemy.isAlive() &&
-          CheckCollisionRecs(player2.getBounds(), enemy.getBounds())) {
-        player2.kill();
+    // Colisión de los jugadores contra cualquier enemigo vivo (pisar para matar / colisión lateral)
+    for (auto &enemy : enemies) {
+      if (!enemy.isAlive()) continue;
+
+      Rectangle eb = enemy.getBounds();
+
+      if (player1.isAlive() && CheckCollisionRecs(player1.getBounds(), eb)) {
+        Rectangle pb = player1.getBounds();
+        float playerFeet = pb.y + pb.height;
+
+        bool stomping = player1.isFalling() && (playerFeet <= eb.y + 14.0f);
+
+        if (stomping) {
+          player1.bounceOnEnemy(eb.y, true);
+          enemy.kill();
+        } else {
+          player1.kill();
+        }
+      }
+
+      if (numPlayers >= 2 && player2.isAlive() && CheckCollisionRecs(player2.getBounds(), eb)) {
+        Rectangle pb = player2.getBounds();
+        float playerFeet = pb.y + pb.height;
+
+        bool stomping = player2.isFalling() && (playerFeet <= eb.y + 14.0f);
+
+        if (stomping) {
+          player2.bounceOnEnemy(eb.y, true);
+          enemy.kill();
+        } else {
+          player2.kill();
+        }
+      }
+    }
+
+    // Recolección de cajas de munición
+    for (auto &box : level.getAmmoBoxes()) {
+      if (!box.active) continue;
+
+      bool collectedByP1 = player1.isAlive() && CheckCollisionRecs(player1.getBounds(), box.bounds);
+      bool collectedByP2 = (numPlayers >= 2) && player2.isAlive() && CheckCollisionRecs(player2.getBounds(), box.bounds);
+
+      if (collectedByP1 || collectedByP2) {
+        box.active = false;
+        weapon1.refillAmmo();
+        weapon2.refillAmmo();
       }
     }
 
@@ -137,6 +188,55 @@ void PlayState::update(float deltaTime) {
     } else {
       if (!player1.isAlive() || !player2.isAlive()) {
         gameOver = true;
+      }
+    }
+
+    // Actualización de cada enemigo con persecución al jugador más cercano
+    for (auto &enemy : enemies) {
+      if (!enemy.isAlive()) continue;
+
+      if (player1.isAlive() || (numPlayers >= 2 && player2.isAlive())) {
+        Vector2 targetPos = player1.getCenter();
+        if (numPlayers >= 2 && player2.isAlive()) {
+          if (!player1.isAlive()) {
+            targetPos = player2.getCenter();
+          } else {
+            Vector2 ec = enemy.getCenter();
+            Vector2 p1c = player1.getCenter();
+            Vector2 p2c = player2.getCenter();
+            float dist1 = (p1c.x - ec.x) * (p1c.x - ec.x) + (p1c.y - ec.y) * (p1c.y - ec.y);
+            float dist2 = (p2c.x - ec.x) * (p2c.x - ec.x) + (p2c.y - ec.y) * (p2c.y - ec.y);
+            if (dist2 < dist1) {
+              targetPos = p2c;
+            }
+          }
+        }
+
+        enemy.update(deltaTime, targetPos, level);
+
+        // Comprobación de muerte por toque lateral tras el movimiento del enemigo
+        if (player1.isAlive() && CheckCollisionRecs(player1.getBounds(), enemy.getBounds())) {
+          Rectangle pb = player1.getBounds();
+          float playerFeet = pb.y + pb.height;
+          bool stomping = player1.isFalling() && (playerFeet <= enemy.getBounds().y + 14.0f);
+          if (stomping) {
+            player1.bounceOnEnemy(enemy.getBounds().y, true);
+            enemy.kill();
+          } else {
+            player1.kill();
+          }
+        }
+        if (numPlayers >= 2 && player2.isAlive() && CheckCollisionRecs(player2.getBounds(), enemy.getBounds())) {
+          Rectangle pb = player2.getBounds();
+          float playerFeet = pb.y + pb.height;
+          bool stomping = player2.isFalling() && (playerFeet <= enemy.getBounds().y + 14.0f);
+          if (stomping) {
+            player2.bounceOnEnemy(enemy.getBounds().y, true);
+            enemy.kill();
+          } else {
+            player2.kill();
+          }
+        }
       }
     }
 
@@ -159,9 +259,6 @@ void PlayState::update(float deltaTime) {
       physicsAccumulator -= physicsTimeStep;
     }
 
-    weapon1.update(deltaTime, mapWidth);
-    weapon2.update(deltaTime, mapWidth);
-
     float targetX = player1.getBounds().x + player1.getBounds().width * 0.5f;
 
     // Si hay 2 jugadores vivos, centrar la cámara en el punto medio de ambos
@@ -170,16 +267,19 @@ void PlayState::update(float deltaTime) {
       targetX = (targetX + p2X) * 0.5f;
     }
 
+    float scaleY = static_cast<float>(screenHeight) / (mapHeightPx > 0.0f ? mapHeightPx : 640.0f);
+    camera.zoom = scaleY > 0.0f ? scaleY : 1.0f;
+    camera.offset = {static_cast<float>(screenWidth) / 2.0f, 0.0f};
+
     // Suavizado de cámara (lerp)
     camera.target.x += (targetX - camera.target.x) * (deltaTime * 5.0f);
     camera.target.y = 0.0f; // Scroll estrictamente horizontal
 
-    // Limitar para que la vista no se salga de los bordes izquierdo y derecho
-    // del mapa
+    // Limitar para que la vista no se salga de los bordes del mapa
     float halfScreenWidth = (screenWidth / 2.0f) / camera.zoom;
     float mapWidthPx = level.getWidth();
 
-    if (mapWidthPx > screenWidth) {
+    if (mapWidthPx > (screenWidth / camera.zoom)) {
       if (camera.target.x - halfScreenWidth < 0.0f) {
         camera.target.x = halfScreenWidth;
       } else if (camera.target.x + halfScreenWidth > mapWidthPx) {
@@ -189,17 +289,28 @@ void PlayState::update(float deltaTime) {
       camera.target.x = mapWidthPx * 0.5f;
     }
 
-    if (enemy.isAlive()) {
-      for (Weapon *currentWeapon : {&weapon1, &weapon2}) {
-        for (auto &proj : currentWeapon->getProjectiles()) {
-          if (proj->isActive() && proj->checkCollision(enemy.getBounds())) {
+    // Campo de visión de la cámara en coordenadas del mundo
+    float visibleWidth = screenWidth / camera.zoom;
+    float visibleHeight = screenHeight / camera.zoom;
+    float cameraLeft = camera.target.x - (camera.offset.x / camera.zoom);
+    float cameraTop = camera.target.y - (camera.offset.y / camera.zoom);
+    Rectangle cameraView = { cameraLeft, cameraTop, visibleWidth, visibleHeight };
+
+    // Actualización de armas con colisión de terreno y límite de cámara
+    weapon1.update(deltaTime, level, cameraView);
+    weapon2.update(deltaTime, level, cameraView);
+
+    // Impacto de balas contra los enemigos
+    for (Weapon *currentWeapon : {&weapon1, &weapon2}) {
+      for (auto &proj : currentWeapon->getProjectiles()) {
+        if (!proj->isActive()) continue;
+
+        for (auto &enemy : enemies) {
+          if (enemy.isAlive() && proj->checkCollision(enemy.getBounds())) {
             proj->deactivate();
             enemy.kill();
             break;
           }
-        }
-        if (!enemy.isAlive()) {
-          break;
         }
       }
     }
@@ -212,7 +323,6 @@ void PlayState::update(float deltaTime) {
 
 void PlayState::render() {
 
-  BeginDrawing();
   ClearBackground(RAYWHITE);
 
   BeginMode2D(camera);
@@ -221,7 +331,12 @@ void PlayState::render() {
   level.render();
 
   // Entidades
-  enemy.render();
+  for (const auto &enemy : enemies) {
+    if (enemy.isAlive()) {
+      enemy.render();
+    }
+  }
+
   player1.render();
   if (numPlayers >= 2) {
     player2.render();
@@ -271,8 +386,17 @@ void PlayState::render() {
       }
     }
 
-    if (!enemy.isAlive()) {
-      DrawText("\u00a1ENEMIGO DERROTADO!", screenWidth / 2 - 130, 40, 20,
+    // Comprobar si todos los enemigos han sido derrotados
+    bool allEnemiesDead = true;
+    for (const auto &enemy : enemies) {
+      if (enemy.isAlive()) {
+        allEnemiesDead = false;
+        break;
+      }
+    }
+
+    if (allEnemiesDead && !enemies.empty()) {
+      DrawText("\u00a1ENEMIGOS DERROTADOS!", screenWidth / 2 - 140, 40, 20,
                DARKGREEN);
     }
   } else {
@@ -283,5 +407,4 @@ void PlayState::render() {
     DrawText("Presiona M para volver al men\u00fa", screenWidth / 2 - 125,
              screenHeight / 2 + 25, 16, DARKGRAY);
   }
-  EndDrawing();
 }

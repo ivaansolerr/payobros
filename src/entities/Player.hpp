@@ -1,6 +1,8 @@
 #pragma once
 #include <raylib.h>
 
+class Level;
+
 struct PlayerKeys {
     int left;
     int right;
@@ -18,7 +20,7 @@ public:
 
     // platformY -> la Y de la plataforma sobre la que está el jugador (-1 si no hay)
     // screenWidth ->  ancho de la pantalla (cacheado una vez por frame en PlayState)
-    void update(float deltaTime, float platformY, int screenWidth);
+    void update(float deltaTime, const Level& level, int screenWidth);
     void render() const;
 
     Rectangle getBounds() const { return bounds; }
@@ -29,7 +31,10 @@ public:
     bool isAlive() const { return alive; }
     void kill() { alive = false; }
 
-    bool hasFallenOff(int screenHeight) const;
+    bool hasFallenOff(int screenHeight) const;;
+
+    bool isFalling() const { return velocityY > 0.0f; }
+    void bounceOnEnemy(float enemyTopY, bool extraJumpImpulse = true);
 
 private:
     Rectangle bounds = {0, 0, 0, 0};

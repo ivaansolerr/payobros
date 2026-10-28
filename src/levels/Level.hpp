@@ -19,6 +19,13 @@ struct SpawnPoint {
     float height;
 };
 
+// Estructura para la caja de munición
+struct AmmoBox {
+    Rectangle bounds;
+    int gid;         // Para saber qué tile dibujar
+    bool active = true;
+};
+
 class Level {
 public:
     Level() = default;
@@ -33,19 +40,28 @@ public:
 
     void render() const;
 
+    // Devuelve un puntero a la primera plataforma con la que colisione rect, o nullptr si no colisiona
+    const Rectangle* checkCollision(Rectangle rect) const;
+
     // Devuelve la Y de la plataforma sobre la que está el rectángulo,
     // o -1.0f si no está sobre ninguna. Permite plataformas a distintas alturas.
     float getPlatformY(Rectangle rect) const;
 
     SpawnPoint getPlayerSpawn() const { return playerSpawn; }
-    SpawnPoint getEnemySpawn() const { return enemySpawn; }
+    const vector<SpawnPoint>& getEnemySpawns() const { return enemySpawns; }
 
     // Ancho del mapa en píxeles
     float getWidth() const { return static_cast<float>(mapWidth * tileWidth); }
+    float getHeight() const { return static_cast<float>(mapHeight * tileHeight); }
+
+    // Acceso a las cajas de munición para PlayState
+    vector<AmmoBox>& getAmmoBoxes() { return ammoBoxes; }
+    const vector<AmmoBox>& getAmmoBoxes() const { return ammoBoxes; }
 
 private:
     vector<Rectangle> platforms;
     vector<b2Body*> physicsBodies;
+    vector<AmmoBox> ammoBoxes;
 
     // Datos del mapa leídos del .tmx
     int mapWidth = 0, mapHeight = 0;     // en tiles
@@ -56,5 +72,5 @@ private:
     Texture2D tileset = {};
 
     SpawnPoint playerSpawn = {};
-    SpawnPoint enemySpawn = {};
+    vector<SpawnPoint> enemySpawns;
 };

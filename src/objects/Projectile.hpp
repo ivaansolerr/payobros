@@ -23,6 +23,9 @@ public:
   float getRadius() const { return config.radius; }
 
   bool checkCollision(Rectangle rec) const;
+  Rectangle getBounds() const {
+    return { position.x - config.radius, position.y - config.radius, config.radius * 2.0f, config.radius * 2.0f };
+  }
 
 private:
   Vector2 position;

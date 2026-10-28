@@ -65,6 +65,10 @@ void MenuState::update(float deltaTime)
 {
     (void)deltaTime;
 
+    if (IsWindowResized()) { // aa el tamaño de los botones al redimensionar pantalla
+        init();
+    }
+
     if (onePlayerPressed) {
         onePlayerPressed = false;
         SetMouseCursor(MOUSE_CURSOR_DEFAULT);
@@ -85,7 +89,6 @@ void MenuState::render()
     const int screenWidth = GetScreenWidth();
     const int screenHeight = GetScreenHeight();
 
-    BeginDrawing();
         ClearBackground(RAYWHITE);
 
         // Título del juego
@@ -133,5 +136,4 @@ void MenuState::render()
         const int hintWidth = MeasureText(controlsHint, hintFontSize);
         DrawText(controlsHint, (screenWidth - hintWidth) / 2, (int)(screenHeight * 0.86f), hintFontSize, GRAY);
 
-    EndDrawing();
 }
