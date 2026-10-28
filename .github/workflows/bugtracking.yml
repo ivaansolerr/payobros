@@ -2,12 +2,13 @@ name: Triaje de issues con Jev
 
 on:
   issues:
-    types: [opened]
+    types: [opened, edited] # Añadida la opción edited por si el bug se edita
 
 # Permisos mínimos: leer el repo y escribir etiquetas en las issues.
 permissions:
   contents: read
   issues: write
+  pull-requests: none # explicito por seguridad
 
 jobs:
   triage:
@@ -19,9 +20,9 @@ jobs:
         with:
           python-version: "3.12"
 
-      - run: pip install requests
+      - run: pip install -r requirements.txt
 
-      - name: Triar la issue
+      - name: ISSUE TRIAGE
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
