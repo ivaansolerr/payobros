@@ -1,8 +1,5 @@
 """Triaje de issues con Jev.
 
-Lo ejecuta el workflow `.github/workflows/bugtracking.yml` cada vez que se abre una
-issue: le hace a Jev (vía OpenRouter) cinco preguntas sobre la issue y aplica
-las etiquetas en las que Jev está seguro. Si no lo está, añade `needs-triage`.
 """
 
 import json
@@ -17,20 +14,44 @@ MIN_CONFIDENCE = 0.6  # choice/score: por debajo no se etiqueta y se pide revisi
 MIN_YES = 0.8  # noul: probabilidad de "sí" a partir de la cual se etiqueta
 SEVERITY = ["wishlist", "low", "medium", "high", "critical"]  # el índice es el valor del score
 
-# cOLORES
-MORADO = "6f42c1"
-VERDE = "0e8a16"  
-AMARILLO = "fbca04"  
-NARANJA = "d93f0b"  
-ROJO = "b60205"  
+# COLORES
+COLOR_MORADO = "6f42c1"      # severity:wishlist
+COLOR_VERDE = "0e8a16"       # severity:low
+COLOR_AMARILLO = "fbca04"    # severity:medium
+COLOR_NARANJA = "d93f0b"     # severity:high
+COLOR_ROJO = "b60205"        # severity:critical
+COLOR_AZUL = "1d76db"        # rol:motor
+COLOR_ROSA = "e875c2"        # rol:jugador
+COLOR_CYAN = "0dceda"        # rol:combate
+COLOR_VERDE_ROL = "2ea44f"   # rol:niveles
+COLOR_VIOLETA = "5319e7"     # rol:ia
+COLOR_GRIS = "bfdadc"        # rol:global
 
-# DICCIONARIO PARA ASIGNAR A CADA SEVERIDAD SU COLOR
 SEVERITY_COLORS = {
-    "wishlist": MORADO,
-    "low": VERDE,
-    "medium": AMARILLO,
-    "high": NARANJA,
-    "critical": ROJO,
+    "wishlist": COLOR_MORADO,
+    "low": COLOR_VERDE,
+    "medium": COLOR_AMARILLO,
+    "high": COLOR_NARANJA,
+    "critical": COLOR_ROJO,
+}
+
+ROLE_COLORS = {
+    "motor": COLOR_AZUL,
+    "jugador": COLOR_ROSA,
+    "combate": COLOR_CYAN,
+    "niveles": COLOR_VERDE_ROL,
+    "ia": COLOR_VIOLETA,
+    "global": COLOR_GRIS,
+}
+
+# ASIGNACIÓN DE ROLES A MIEMBROS DEL EQUIPO (GitHub usernames)
+ROLE_ASSIGNEES = {
+    "motor": ["Arid3n"],
+    "jugador": ["ivaansolerr"],
+    "combate": ["jrcb3-ua"],
+    "niveles": ["joaquinavarro"],
+    "ia": ["jvev1"],
+    "global": ["Arid3n", "ivaansolerr", "jrcb3-ua", "joaquinavarro", "jvev1"],
 }
 
 QUESTIONS = {
@@ -92,6 +113,46 @@ QUESTIONS = {
             "false": "Hay datos suficientes para empezar a investigar",
         },
     },
+    "rol": {
+        "type": "choice",
+        "instructions": (
+            "¿Qué miembro del equipo debería encargarse de la issue descrita "
+            "en `issue`? Elige el rol cuya área de responsabilidad encaje mejor "
+            "con el problema o la petición."
+            "Si no estás seguro o requiere una revisión de todo el grupo, responde `global`"
+        ),
+        "criteria": {
+            "motor": (
+                "Afecta al motor del juego: StateMachine, GameState, main.cpp, "
+                "CMakeLists.txt, transiciones entre estados (menú, pausa, victoria, "
+                "game over, selección de nivel) o configuración general del juego"
+            ),
+            "jugador": (
+                "Afecta a las mecánicas del jugador: Player, movimiento, salto, "
+                "gravedad, input, sistema de vidas/salud, puntuación, HUD, "
+                "apuntado con ratón o multijugador local"
+            ),
+            "combate": (
+                "Afecta al sistema de combate: Weapon, Projectile, tipos de "
+                "proyectil, disparo, recarga, munición, sistema de daño, pickups "
+                "de armas o inventario de armas"
+            ),
+            "niveles": (
+                "Afecta a los niveles o las físicas: Level, carga de mapas .tmx, "
+                "plataformas, Box2D, PhysicsUnits, colisiones con el mundo, "
+                "cámara, plataformas móviles u objetos interactivos del mapa"
+            ),
+            "ia": (
+                "Afecta al comportamiento de los enemigos o NPCs: Enemy, IA, "
+                "patrullaje, persecución, ataque, tipos de enemigos, spawner "
+                "de enemigos o colisiones enemigo-mundo"
+            ),
+            "global": (
+                "No encaja claramente en un solo rol, afecta a varias áreas "
+                "a la vez, o no hay información suficiente para decidir"
+            ),
+        },
+    },
 }
 
 
@@ -139,9 +200,32 @@ def decide(answers):
     if answers["duplicada"]["noul"] >= MIN_YES:
         labels.append("possible-duplicate")
 
+    # Asignación por rol del equipo.
+    rol = answers["rol"]
+    if rol["choice"] != "global" and rol["confidence"] >= MIN_CONFIDENCE:
+        labels.append("rol:" + rol["choice"])
+    else:
+        labels.append("rol:global")
+
     if not sure:
         labels.append("needs-triage")
     return labels
+
+
+def asignaciones_rol(labels):
+    """Devuelve la lista de GitHub usernames a asignar según la etiqueta de rol."""
+    rol_encontrado = ""
+
+    for label in labels:
+        if label.startswith("rol:"):
+            rol_encontrado = label.replace("rol:", "")
+            break
+
+    if rol_encontrado in ROLE_ASSIGNEES:
+        assignees = ROLE_ASSIGNEES[rol_encontrado]
+    else:
+        assignees = []
+    return assignees
 
 
 def crear_etiquetas(github, repo_url, labels):
@@ -161,6 +245,13 @@ def crear_etiquetas(github, repo_url, labels):
             sev = label.replace("severity:", "")
             if sev in SEVERITY_COLORS:
                 color = SEVERITY_COLORS[sev]
+                github.post(f"{repo_url}/labels", json={"name": label, "color": color})
+
+        # Si es una etiqueta de rol, buscamos su color y la creamos
+        if label.startswith("rol:"):
+            rol = label.replace("rol:", "")
+            if rol in ROLE_COLORS:
+                color = ROLE_COLORS[rol]
                 github.post(f"{repo_url}/labels", json={"name": label, "color": color})
 
 
@@ -195,6 +286,17 @@ def main():
 
     r = github.post(f"{api}/{issue['number']}/labels", json={"labels": labels}, timeout=30)
     r.raise_for_status()
+
+    # Asignar la issue al miembro (o miembros) del equipo según el rol.
+    assignees = asignaciones_rol(labels)
+    if assignees:
+        r = github.post(
+            f"{api}/{issue['number']}/assignees",
+            json={"assignees": assignees},
+            timeout=30,
+        )
+        r.raise_for_status()
+        print("Asignada a:", assignees)
 
 
 if __name__ == "__main__":
