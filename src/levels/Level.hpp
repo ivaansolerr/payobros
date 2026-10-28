@@ -52,6 +52,7 @@ public:
 
     // Ancho del mapa en píxeles
     float getWidth() const { return static_cast<float>(mapWidth * tileWidth); }
+    float getHeight() const { return static_cast<float>(mapHeight * tileHeight); }
 
     // Acceso a las cajas de munición para PlayState
     vector<AmmoBox>& getAmmoBoxes() { return ammoBoxes; }

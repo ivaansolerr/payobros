@@ -5,10 +5,24 @@
 
 int main()
 { 
-    const int screenWidth = 960;
-    const int screenHeight = 640;
+    const int windowWidth = 960;
+    const int windowHeight = 640;
 
-    InitWindow(screenWidth, screenHeight, "Bienvenido a PayoBros");
+    // Permitir ventana redimensionable y configurar pantalla completa
+    SetConfigFlags(FLAG_WINDOW_RESIZABLE);
+    InitWindow(windowWidth, windowHeight, "Bienvenido a PayoBros");
+    SetExitKey(KEY_NULL); // Evitar que ESC cierre el juego para usarla en pausa
+
+    // Iniciar a pantalla completa en la resolución nativa del monitor
+    int monitor = GetCurrentMonitor();
+    int monitorWidth = GetMonitorWidth(monitor);
+    int monitorHeight = GetMonitorHeight(monitor);
+    if (monitorWidth > 0 && monitorHeight > 0)
+    {
+        SetWindowSize(monitorWidth, monitorHeight);
+        ToggleFullscreen();
+    }
+
     SetTargetFPS(60);
 
     float deltaTime = 0.0f;
@@ -19,6 +33,12 @@ int main()
 
     while (!stateMachine.isGameEnding() && !WindowShouldClose())
     {
+        // Alternar pantalla completa con F11
+        if (IsKeyPressed(KEY_F11))
+        {
+            ToggleFullscreen();
+        }
+
         deltaTime = GetFrameTime();
         stateMachine.handleStateChanges(deltaTime);
 
@@ -29,7 +49,11 @@ int main()
 
         stateMachine.getCurrentState()->handleInput();
         stateMachine.getCurrentState()->update(deltaTime);
-        stateMachine.getCurrentState()->render();       
+
+        // BeginDrawing/EndDrawing centralizado: cada estado solo dibuja su contenido
+        BeginDrawing();
+        stateMachine.getCurrentState()->render();
+        EndDrawing();
     }
 
     CloseWindow();

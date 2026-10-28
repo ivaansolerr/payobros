@@ -33,6 +33,10 @@ void VictoryState::handleInput() {
 void VictoryState::update(float deltaTime) {
   (void)deltaTime;
 
+  if (IsWindowResized()) {
+    init();
+  }
+
   if (menuPressed) {
     menuPressed = false;
     SetMouseCursor(MOUSE_CURSOR_DEFAULT);
@@ -45,7 +49,6 @@ void VictoryState::render() {
   const int screenWidth = GetScreenWidth();
   const int screenHeight = GetScreenHeight();
 
-  BeginDrawing();
   ClearBackground(RAYWHITE);
 
   // Título de victoria
@@ -77,5 +80,4 @@ void VictoryState::render() {
            (int)(menuButton.y + (menuButton.height - btnFontSize) / 2.0f),
            btnFontSize, textCol);
 
-  EndDrawing();
 }

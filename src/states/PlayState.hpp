@@ -13,7 +13,7 @@ public:
     // explicit -> Evita conversiones implícitas
     // previene de cambios de estado implicitos indeseados al pasar parametros a stateMachine
     explicit PlayState(int numPlayers = 1);
-    ~PlayState() override = default;
+    ~PlayState() override { level.unload(); }
 
     void init() override;
     void handleInput() override;
