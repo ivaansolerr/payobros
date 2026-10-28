@@ -4,177 +4,216 @@
 #define screenWidth GetScreenWidth()
 #define screenHeight GetScreenHeight()
 
-PlayState::PlayState(int numPlayers){
-    this->numPlayers = numPlayers;
-}
+PlayState::PlayState(int numPlayers) { this->numPlayers = numPlayers; }
 
 void PlayState::init() {
 
-    level.init(screenWidth, screenHeight);
+  level.init(screenWidth, screenHeight);
 
-    SpawnPoint ps = level.getPlayerSpawn();
+  SpawnPoint ps = level.getPlayerSpawn();
 
-    // player 1 rojo
-    PlayerKeys keys1 = { KEY_A, KEY_D, KEY_SPACE, KEY_W };
-    player1.init(ps.x, ps.y, ps.width, ps.height, keys1, RED);
+  // player 1 rojo
+  PlayerKeys keys1 = {KEY_A, KEY_D, KEY_SPACE, KEY_W};
+  player1.init(ps.x, ps.y, ps.width, ps.height, keys1, RED);
 
-    // player 2 azul
+  // player 2 azul
+  if (numPlayers >= 2) {
+    PlayerKeys keys2 = {KEY_LEFT, KEY_RIGHT, KEY_UP, -1};
+    player2.init(ps.x + 45.0f, ps.y, ps.width, ps.height, keys2, BLUE);
+  }
+
+  SpawnPoint es = level.getEnemySpawn();
+  enemy.init(es.x, es.y, es.width, es.height);
+
+  weapon.clear();
+  gameOver = false;
+  restartRequested = false;
+}
+
+void PlayState::handleInput() {
+  restartRequested = false;
+
+  if (IsKeyPressed(KEY_M)) {
+    if (stateMachine) {
+      stateMachine->removeState(false);
+      return;
+    }
+  }
+
+  if (!gameOver) {
+    player1.handleInput();
+
     if (numPlayers >= 2) {
-        PlayerKeys keys2 = { KEY_LEFT, KEY_RIGHT, KEY_UP, -1 };
-        player2.init(ps.x + 45.0f, ps.y, ps.width, ps.height, keys2, BLUE);
+      player2.handleInput();
     }
 
-    SpawnPoint es = level.getEnemySpawn();
-    enemy.init(es.x, es.y, es.width, es.height);
-
-    weapon.clear();
-    gameOver = false;
-    restartRequested = false;
+    if (player1.isAlive()) {
+      Vector2 playerCenter = player1.getCenter();
+      weapon.handleInput(playerCenter);
+    }
+  } else {
+    if (IsKeyPressed(KEY_R)) {
+      restartRequested = true;
+    }
+  }
 }
 
-void PlayState::handleInput()
-{
-    restartRequested = false;
+void PlayState::update(float deltaTime) {
 
-    if (IsKeyPressed(KEY_M)) {
-        if (stateMachine) {
-            stateMachine->removeState(false);
-            return;
-        }
+  if (!gameOver) {
+    if (player1.isAlive()) {
+      float platformY1 = level.getPlatformY(player1.getBounds());
+      player1.update(deltaTime, platformY1, screenWidth);
+
+      if (player1.hasFallenOff(screenHeight)) {
+        player1.kill();
+      }
+
+      if (enemy.isAlive() &&
+          CheckCollisionRecs(player1.getBounds(), enemy.getBounds())) {
+        player1.kill();
+      }
     }
 
-    if (!gameOver) {
-        player1.handleInput();
+    if (numPlayers >= 2 && player2.isAlive()) {
+      float platformY2 = level.getPlatformY(player2.getBounds());
+      player2.update(deltaTime, platformY2, screenWidth);
 
-        if (numPlayers >= 2) {
-            player2.handleInput();
-        }
+      if (player2.hasFallenOff(screenHeight)) {
+        player2.kill();
+      }
 
-        if (player1.isAlive()) {
-            Vector2 playerCenter = player1.getCenter();
-            weapon.handleInput(playerCenter);
+      if (enemy.isAlive() &&
+          CheckCollisionRecs(player2.getBounds(), enemy.getBounds())) {
+        player2.kill();
+      }
+    }
+
+    if (enemy.isAlive()) {
+      Vector2 targetPos = player1.getCenter();
+      if (numPlayers >= 2 && player2.isAlive()) {
+        if (!player1.isAlive()) {
+          targetPos = player2.getCenter();
+        } else {
+          Vector2 ec = enemy.getCenter();
+          Vector2 p1c = player1.getCenter();
+          Vector2 p2c = player2.getCenter();
+          float dist1 =
+              (p1c.x - ec.x) * (p1c.x - ec.x) + (p1c.y - ec.y) * (p1c.y - ec.y);
+          float dist2 =
+              (p2c.x - ec.x) * (p2c.x - ec.x) + (p2c.y - ec.y) * (p2c.y - ec.y);
+          if (dist2 < dist1) {
+            targetPos = p2c;
+          }
         }
+      }
+      if (player1.isAlive() || (numPlayers >= 2 && player2.isAlive())) {
+        enemy.update(deltaTime, targetPos);
+        if (player1.isAlive() &&
+            CheckCollisionRecs(player1.getBounds(), enemy.getBounds())) {
+          player1.kill();
+        }
+        if (numPlayers >= 2 && player2.isAlive() &&
+            CheckCollisionRecs(player2.getBounds(), enemy.getBounds())) {
+          player2.kill();
+        }
+      }
+    }
+
+    if (numPlayers == 1) {
+      if (!player1.isAlive()) {
+        gameOver = true;
+      }
     } else {
-        if (IsKeyPressed(KEY_R)) {
-            restartRequested = true;
-        }
+      if (!player1.isAlive() || !player2.isAlive()) {
+        gameOver = true;
+      }
     }
+
+    weapon.update(deltaTime);
+
+    if (enemy.isAlive()) {
+      for (auto &proj : weapon.getProjectiles()) {
+        if (proj.isActive() && proj.checkCollision(enemy.getBounds())) {
+          proj.deactivate();
+          enemy.kill();
+          break;
+        }
+      }
+    }
+  } else {
+    if (restartRequested) {
+      init();
+    }
+  }
 }
 
-void PlayState::update(float deltaTime)
-{
+void PlayState::render() {
 
-    if (!gameOver) {
-        if (player1.isAlive()) {
-            float platformY1 = level.getPlatformY(player1.getBounds());
-            player1.update(deltaTime, platformY1, screenWidth);
+  BeginDrawing();
+  ClearBackground(RAYWHITE);
 
-            if (player1.hasFallenOff(screenHeight)) {
-                player1.kill();
-            }
+  // Nivel (plataformas)
+  level.render();
 
-            if (enemy.isAlive() && CheckCollisionRecs(player1.getBounds(), enemy.getBounds())) {
-                player1.kill();
-            }
-        }
+  // Entidades
+  enemy.render();
+  player1.render();
+  if (numPlayers >= 2) {
+    player2.render();
+  }
 
-        if (numPlayers >= 2 && player2.isAlive()) {
-            float platformY2 = level.getPlatformY(player2.getBounds());
-            player2.update(deltaTime, platformY2, screenWidth);
+  // Arma: línea de apuntado al cursor y proyectiles
+  if (!gameOver && player1.isAlive()) {
+    weapon.render(player1.getCenter());
+  } else {
+    for (const auto &proj : weapon.getProjectiles()) {
+      proj.render();
+    }
+  }
 
-            if (player2.hasFallenOff(screenHeight)) {
-                player2.kill();
-            }
-
-            if (enemy.isAlive() && CheckCollisionRecs(player2.getBounds(), enemy.getBounds())) {
-                player2.kill();
-            }
-        }
-
-        if (numPlayers == 1) {
-            if (!player1.isAlive()) {
-                gameOver = true;
-            }
-        } else {
-            if (!player1.isAlive() || !player2.isAlive()) {
-                gameOver = true;
-            }
-        }
-
-        weapon.update(deltaTime);
-
-        if (enemy.isAlive()) {
-            for (auto& proj : weapon.getProjectiles()) {
-                if (proj.isActive() && proj.checkCollision(enemy.getBounds())) {
-                    proj.deactivate();
-                    enemy.kill();
-                    break;
-                }
-            }
-        }
+  // UI
+  if (!gameOver) {
+    if (numPlayers == 1) {
+      DrawText(
+          "A/D: Moverse | ESPACIO: Saltar | Click: Disparar | M: Men\u00fa", 10,
+          10, 14, DARKGRAY);
+      Rectangle pb = player1.getBounds();
+      DrawText(TextFormat("P1 X: %.0f | Y: %.0f", pb.x, pb.y), 10, 30, 16,
+               MAROON);
     } else {
-        if (restartRequested) {
-            init();
-        }
+      DrawText(
+          "P1 (Rojo): A/D/Espacio + Click | P2 (Azul): Flechas | M: Men\u00fa",
+          10, 10, 14, DARKGRAY);
+
+      if (player1.isAlive()) {
+        Rectangle p1b = player1.getBounds();
+        DrawText(TextFormat("P1 (Rojo) X: %.0f | Y: %.0f", p1b.x, p1b.y), 10,
+                 30, 16, MAROON);
+      } else {
+        DrawText("P1 (Rojo): K.O.", 10, 30, 16, LIGHTGRAY);
+      }
+
+      if (player2.isAlive()) {
+        Rectangle p2b = player2.getBounds();
+        DrawText(TextFormat("P2 (Azul) X: %.0f | Y: %.0f", p2b.x, p2b.y), 10,
+                 50, 16, DARKBLUE);
+      } else {
+        DrawText("P2 (Azul): K.O.", 10, 50, 16, LIGHTGRAY);
+      }
     }
-}
 
-void PlayState::render()
-{
-
-    BeginDrawing();
-        ClearBackground(RAYWHITE);
-
-        // Nivel (plataformas)
-        level.render();
-
-        // Entidades
-        enemy.render();
-        player1.render();
-        if (numPlayers >= 2) {
-            player2.render();
-        }
-
-        // Arma: línea de apuntado al cursor y proyectiles
-        if (!gameOver && player1.isAlive()) {
-            weapon.render(player1.getCenter());
-        } else {
-            for (const auto& proj : weapon.getProjectiles()) {
-                proj.render();
-            }
-        }
-
-        // UI
-        if (!gameOver) {
-            if (numPlayers == 1) {
-                DrawText("A/D: Moverse | ESPACIO: Saltar | Click: Disparar | M: Men\u00fa", 10, 10, 14, DARKGRAY);
-                Rectangle pb = player1.getBounds();
-                DrawText(TextFormat("P1 X: %.0f | Y: %.0f", pb.x, pb.y), 10, 30, 16, MAROON);
-            } else {
-                DrawText("P1 (Rojo): A/D/Espacio + Click | P2 (Azul): Flechas | M: Men\u00fa", 10, 10, 14, DARKGRAY);
-
-                if (player1.isAlive()) {
-                    Rectangle p1b = player1.getBounds();
-                    DrawText(TextFormat("P1 (Rojo) X: %.0f | Y: %.0f", p1b.x, p1b.y), 10, 30, 16, MAROON);
-                } else {
-                    DrawText("P1 (Rojo): K.O.", 10, 30, 16, LIGHTGRAY);
-                }
-
-                if (player2.isAlive()) {
-                    Rectangle p2b = player2.getBounds();
-                    DrawText(TextFormat("P2 (Azul) X: %.0f | Y: %.0f", p2b.x, p2b.y), 10, 50, 16, DARKBLUE);
-                } else {
-                    DrawText("P2 (Azul): K.O.", 10, 50, 16, LIGHTGRAY);
-                }
-            }
-
-            if (!enemy.isAlive()) {
-                DrawText("\u00a1ENEMIGO DERROTADO!", screenWidth / 2 - 130, 40, 20, DARKGREEN);
-            }
-        } else {
-            DrawText("GAME OVER", screenWidth / 2 - 85, screenHeight / 2 - 45, 32, MAROON);
-            DrawText("Presiona R para reiniciar", screenWidth / 2 - 105, screenHeight / 2 - 5, 16, DARKGRAY);
-            DrawText("Presiona M para volver al men\u00fa", screenWidth / 2 - 125, screenHeight / 2 + 25, 16, DARKGRAY);
-        }
-    EndDrawing();
+    if (!enemy.isAlive()) {
+      DrawText("\u00a1ENEMIGO DERROTADO!", screenWidth / 2 - 130, 40, 20,
+               DARKGREEN);
+    }
+  } else {
+    DrawText("GAME OVER", screenWidth / 2 - 85, screenHeight / 2 - 45, 32,
+             MAROON);
+    DrawText("Presiona R para reiniciar", screenWidth / 2 - 105,
+             screenHeight / 2 - 5, 16, DARKGRAY);
+    DrawText("Presiona M para volver al men\u00fa", screenWidth / 2 - 125,
+             screenHeight / 2 + 25, 16, DARKGRAY);
+  }
+  EndDrawing();
 }
