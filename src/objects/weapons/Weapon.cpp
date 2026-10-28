@@ -82,3 +82,8 @@ void Weapon::clear() {
   reloadRemaining = 0.0f;
   ammoInMagazine = config.magazineCapacity;
 }
+
+void Weapon::refillAmmo() {
+    ammoInMagazine = config.magazineCapacity;
+    reloadRemaining = 0.0f;
+}
