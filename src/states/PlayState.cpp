@@ -103,8 +103,7 @@ void PlayState::update(float deltaTime) {
   if (!gameOver) {
     const float mapWidth = level.getWidth();
     if (player1.isAlive()) {
-      float platformY1 = level.getPlatformY(player1.getBounds());
-      player1.update(deltaTime, platformY1, mapWidth);
+      player1.update(deltaTime, level, mapWidth);
 
       if (player1.hasFallenOff(screenHeight)) {
         player1.kill();
@@ -117,8 +116,7 @@ void PlayState::update(float deltaTime) {
     }
 
     if (numPlayers >= 2 && player2.isAlive()) {
-      float platformY2 = level.getPlatformY(player2.getBounds());
-      player2.update(deltaTime, platformY2, mapWidth);
+      player2.update(deltaTime, level, mapWidth);
 
       if (player2.hasFallenOff(screenHeight)) {
         player2.kill();
@@ -174,8 +172,7 @@ void PlayState::update(float deltaTime) {
     camera.target.x += (targetX - camera.target.x) * (deltaTime * 5.0f);
     camera.target.y = 0.0f; // Scroll estrictamente horizontal
 
-    // Limitar para que la vista no se salga de los bordes izquierdo y derecho
-    // del mapa
+    // Limitar para que la vista no se salga de los bordes izquierdo y derecho del mapa
     float halfScreenWidth = (screenWidth / 2.0f) / camera.zoom;
     float mapWidthPx = level.getWidth();
 

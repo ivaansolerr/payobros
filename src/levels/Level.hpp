@@ -33,6 +33,9 @@ public:
 
     void render() const;
 
+    // Devuelve un puntero a la primera plataforma con la que colisione rect, o nullptr si no colisiona
+    const Rectangle* checkCollision(Rectangle rect) const;
+
     // Devuelve la Y de la plataforma sobre la que está el rectángulo,
     // o -1.0f si no está sobre ninguna. Permite plataformas a distintas alturas.
     float getPlatformY(Rectangle rect) const;
