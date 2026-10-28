@@ -2,8 +2,9 @@
 #include "core/GameState.hpp"
 #include "entities/Player.hpp"
 #include "entities/Enemy.hpp"
-#include "objects/Weapon.hpp"
+#include "objects/weapons/Weapon.hpp"
 #include "levels/Level.hpp"
+#include <box2d/box2d.h>
 #include <raylib.h>
 
 class PlayState : public GameState
@@ -23,14 +24,22 @@ public:
     void resume() override {}
 
 private:
+    b2World physicsWorld;
+    float physicsAccumulator = 0.0f;
     int numPlayers = 1;
 
     Player player1;
     Player player2;
     Enemy enemy;
-    Weapon weapon;
+    Weapon weapon1;
+    Weapon weapon2;
+    Weapon* selectedWeapon = &weapon1;
+    WeaponConfig straightWeaponConfig = {};
+    WeaponConfig bouncingWeaponConfig = {};
     Level level;
+    Camera2D camera = { 0 }; // scroll lateral
 
+    bool bouncingWeaponSelected = false;
     bool gameOver = false;
     bool restartRequested = false;
 };
