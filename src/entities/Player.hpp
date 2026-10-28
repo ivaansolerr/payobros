@@ -31,7 +31,10 @@ public:
     bool isAlive() const { return alive; }
     void kill() { alive = false; }
 
-    bool hasFallenOff(int screenHeight) const;
+    bool hasFallenOff(int screenHeight) const;;
+
+    bool isFalling() const { return velocityY > 0.0f; }
+    void bounceOnEnemy(float enemyTopY, bool extraJumpImpulse = true);
 
 private:
     Rectangle bounds = {0, 0, 0, 0};

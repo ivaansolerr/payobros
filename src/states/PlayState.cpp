@@ -30,8 +30,12 @@ void PlayState::init() {
     player2.init(ps.x + 45.0f, ps.y, ps.width, ps.height, keys2, BLUE);
   }
 
-  SpawnPoint es = level.getEnemySpawn();
-  enemy.init(es.x, es.y, es.width, es.height);
+  enemies.clear();
+  for (const SpawnPoint& sp : level.getEnemySpawns()) {
+    Enemy e;
+    e.init(sp.x, sp.y, sp.width, sp.height);
+    enemies.push_back(e);
+  }
 
   straightWeaponConfig = {};
   straightWeaponConfig.magazineCapacity = 20;
@@ -108,11 +112,6 @@ void PlayState::update(float deltaTime) {
       if (player1.hasFallenOff(screenHeight)) {
         player1.kill();
       }
-
-      if (enemy.isAlive() &&
-          CheckCollisionRecs(player1.getBounds(), enemy.getBounds())) {
-        player1.kill();
-      }
     }
 
     if (numPlayers >= 2 && player2.isAlive()) {
@@ -121,10 +120,42 @@ void PlayState::update(float deltaTime) {
       if (player2.hasFallenOff(screenHeight)) {
         player2.kill();
       }
+    }
 
-      if (enemy.isAlive() &&
-          CheckCollisionRecs(player2.getBounds(), enemy.getBounds())) {
-        player2.kill();
+    // Colisión de los jugadores contra cualquier enemigo vivo
+    for (const auto &enemy : enemies) {
+      if (!enemy.isAlive()) continue;
+
+      Rectangle eb = enemy.getBounds();
+
+      if (player1.isAlive() && CheckCollisionRecs(player1.getBounds(), eb)) {
+        Rectangle pb = player1.getBounds();
+        float playerFeet = pb.y + pb.height;
+        
+        // Comprobar si los pies del jugador están cerca del borde superior del enemigo
+        // y el jugador venía cayendo
+        bool stomping = player1.isFalling() && (playerFeet <= eb.y + 14.0f);
+
+        if (stomping) {
+          player1.bounceOnEnemy(eb.y, true); // true para botar, false para pararse en seco
+          // si quisieramos matar al enemigo al pisarlo:
+          // enemy.kill(); 
+        } else {
+          player1.kill();
+        }
+      }
+
+      if (numPlayers >= 2 && player2.isAlive() && CheckCollisionRecs(player2.getBounds(), eb)) {
+        Rectangle pb = player2.getBounds();
+        float playerFeet = pb.y + pb.height;
+
+        bool stomping = player2.isFalling() && (playerFeet <= eb.y + 14.0f);
+
+        if (stomping) {
+          player2.bounceOnEnemy(eb.y, true);
+        } else {
+          player2.kill();
+        }
       }
     }
 
@@ -152,32 +183,33 @@ void PlayState::update(float deltaTime) {
       }
     }
 
-    if (enemy.isAlive()) {
-      Vector2 targetPos = player1.getCenter();
-      if (numPlayers >= 2 && player2.isAlive()) {
-        if (!player1.isAlive()) {
-          targetPos = player2.getCenter();
-        } else {
-          Vector2 ec = enemy.getCenter();
-          Vector2 p1c = player1.getCenter();
-          Vector2 p2c = player2.getCenter();
-          float dist1 =
-              (p1c.x - ec.x) * (p1c.x - ec.x) + (p1c.y - ec.y) * (p1c.y - ec.y);
-          float dist2 =
-              (p2c.x - ec.x) * (p2c.x - ec.x) + (p2c.y - ec.y) * (p2c.y - ec.y);
-          if (dist2 < dist1) {
-            targetPos = p2c;
+    // Actualización de cada enemigo con persecución al jugador más cercano
+    for (auto &enemy : enemies) {
+      if (!enemy.isAlive()) continue;
+
+      if (player1.isAlive() || (numPlayers >= 2 && player2.isAlive())) {
+        Vector2 targetPos = player1.getCenter();
+        if (numPlayers >= 2 && player2.isAlive()) {
+          if (!player1.isAlive()) {
+            targetPos = player2.getCenter();
+          } else {
+            Vector2 ec = enemy.getCenter();
+            Vector2 p1c = player1.getCenter();
+            Vector2 p2c = player2.getCenter();
+            float dist1 = (p1c.x - ec.x) * (p1c.x - ec.x) + (p1c.y - ec.y) * (p1c.y - ec.y);
+            float dist2 = (p2c.x - ec.x) * (p2c.x - ec.x) + (p2c.y - ec.y) * (p2c.y - ec.y);
+            if (dist2 < dist1) {
+              targetPos = p2c;
+            }
           }
         }
-      }
-      if (player1.isAlive() || (numPlayers >= 2 && player2.isAlive())) {
+
         enemy.update(deltaTime, targetPos, level);
-        if (player1.isAlive() &&
-            CheckCollisionRecs(player1.getBounds(), enemy.getBounds())) {
+
+        if (player1.isAlive() && CheckCollisionRecs(player1.getBounds(), enemy.getBounds())) {
           player1.kill();
         }
-        if (numPlayers >= 2 && player2.isAlive() &&
-            CheckCollisionRecs(player2.getBounds(), enemy.getBounds())) {
+        if (numPlayers >= 2 && player2.isAlive() && CheckCollisionRecs(player2.getBounds(), enemy.getBounds())) {
           player2.kill();
         }
       }
@@ -217,8 +249,7 @@ void PlayState::update(float deltaTime) {
     camera.target.x += (targetX - camera.target.x) * (deltaTime * 5.0f);
     camera.target.y = 0.0f; // Scroll estrictamente horizontal
 
-    // Limitar para que la vista no se salga de los bordes izquierdo y derecho
-    // del mapa
+    // Limitar para que la vista no se salga de los bordes del mapa
     float halfScreenWidth = (screenWidth / 2.0f) / camera.zoom;
     float mapWidthPx = level.getWidth();
 
@@ -232,17 +263,17 @@ void PlayState::update(float deltaTime) {
       camera.target.x = mapWidthPx * 0.5f;
     }
 
-    if (enemy.isAlive()) {
-      for (Weapon *currentWeapon : {&weapon1, &weapon2}) {
-        for (auto &proj : currentWeapon->getProjectiles()) {
-          if (proj->isActive() && proj->checkCollision(enemy.getBounds())) {
+    // Impacto de balas contra los enemigos
+    for (Weapon *currentWeapon : {&weapon1, &weapon2}) {
+      for (auto &proj : currentWeapon->getProjectiles()) {
+        if (!proj->isActive()) continue;
+
+        for (auto &enemy : enemies) {
+          if (enemy.isAlive() && proj->checkCollision(enemy.getBounds())) {
             proj->deactivate();
             enemy.kill();
             break;
           }
-        }
-        if (!enemy.isAlive()) {
-          break;
         }
       }
     }
@@ -264,7 +295,12 @@ void PlayState::render() {
   level.render();
 
   // Entidades
-  enemy.render();
+  for (const auto &enemy : enemies) {
+    if (enemy.isAlive()) {
+      enemy.render();
+    }
+  }
+
   player1.render();
   if (numPlayers >= 2) {
     player2.render();
@@ -314,8 +350,17 @@ void PlayState::render() {
       }
     }
 
-    if (!enemy.isAlive()) {
-      DrawText("\u00a1ENEMIGO DERROTADO!", screenWidth / 2 - 130, 40, 20,
+    // Comprobar si todos los enemigos han sido derrotados
+    bool allEnemiesDead = true;
+    for (const auto &enemy : enemies) {
+      if (enemy.isAlive()) {
+        allEnemiesDead = false;
+        break;
+      }
+    }
+
+    if (allEnemiesDead && !enemies.empty()) {
+      DrawText("\u00a1ENEMIGOS DERROTADOS!", screenWidth / 2 - 140, 40, 20,
                DARKGREEN);
     }
   } else {

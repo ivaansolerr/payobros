@@ -143,7 +143,12 @@ bool Level::load(const string& tmxPath)
     const float groundY = 14.0f * tileHeight;
 
     playerSpawn = {30.0f, groundY - 40.0f, 40.0f, 40.0f};
-    enemySpawn  = {800.0f, groundY - 40.0f, 40.0f, 40.0f};
+
+    enemySpawns.clear();
+
+    enemySpawns.push_back({1000.0f, 440.0f, 40.0f, 40.0f});
+    enemySpawns.push_back({2800.0f, 440.0f, 40.0f, 40.0f});
+
     return true;
 }
 
@@ -155,7 +160,8 @@ void Level::unload()
     }
     tiles.clear();
     platforms.clear();
-    ammoBoxes.clear(); // <-- Limpiar
+    ammoBoxes.clear(); 
+    enemySpawns.clear();
 }
 
 void Level::createPhysicsBodies(b2World& world)

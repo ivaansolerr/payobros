@@ -114,3 +114,13 @@ bool Player::hasFallenOff(int screenHeight) const
 {
     return alive && bounds.y > screenHeight;
 }
+
+void Player::bounceOnEnemy(float enemyTopY, bool extraJumpImpulse) {
+    bounds.y = enemyTopY - bounds.height;
+    if (extraJumpImpulse) {
+        velocityY = JUMP_FORCE * 0.75f; // Rebote hacia arriba estilo Mario
+    } else {
+        velocityY = 0.0f;               // Se queda apoyado como un bloque normal
+        grounded = true;
+    }
+}

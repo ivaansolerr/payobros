@@ -48,7 +48,7 @@ public:
     float getPlatformY(Rectangle rect) const;
 
     SpawnPoint getPlayerSpawn() const { return playerSpawn; }
-    SpawnPoint getEnemySpawn() const { return enemySpawn; }
+    const vector<SpawnPoint>& getEnemySpawns() const { return enemySpawns; }
 
     // Ancho del mapa en píxeles
     float getWidth() const { return static_cast<float>(mapWidth * tileWidth); }
@@ -71,5 +71,5 @@ private:
     Texture2D tileset = {};
 
     SpawnPoint playerSpawn = {};
-    SpawnPoint enemySpawn = {};
+    vector<SpawnPoint> enemySpawns;
 };

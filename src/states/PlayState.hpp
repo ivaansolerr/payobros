@@ -30,7 +30,7 @@ private:
 
     Player player1;
     Player player2;
-    Enemy enemy;
+    vector<Enemy> enemies;
     Weapon weapon1;
     Weapon weapon2;
     Weapon* selectedWeapon = &weapon1;
