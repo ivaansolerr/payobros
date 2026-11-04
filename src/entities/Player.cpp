@@ -1,9 +1,50 @@
 #include "Player.hpp"
+#include "CharacterSkin.hpp"
 #include "levels/Level.hpp" 
+#include <string>
+
+namespace {
+constexpr const char* ANIMATION_POSES[] = {
+    "idle", "walk1", "walk2", "jump", "fall"
+};
+}
+
+Player::~Player()
+{
+    unloadAnimationTextures();
+}
+
+void Player::loadAnimationTextures()
+{
+    unloadAnimationTextures();
+    const CharacterSkinInfo& skin = getCharacterSkinInfo(
+        getSelectedCharacterSkin());
+    for (int i = 0; i < ANIMATION_FRAME_COUNT; ++i) {
+        const std::string path =
+            std::string("src/assets/characters/") + skin.folder + "/" +
+            skin.prefix + "_" + ANIMATION_POSES[i] + ".png";
+        animationTextures[i] = LoadTexture(path.c_str());
+        if (animationTextures[i].id == 0) {
+            TraceLog(LOG_ERROR, "PLAYER: no se pudo cargar el sprite %s",
+                     path.c_str());
+        }
+    }
+}
+
+void Player::unloadAnimationTextures()
+{
+    for (Texture2D& texture : animationTextures) {
+        if (texture.id != 0) {
+            UnloadTexture(texture);
+            texture = {};
+        }
+    }
+}
 
 void Player::init(float x, float y, float width, float height,
                   PlayerKeys k, Color c)
 {
+    loadAnimationTextures();
     bounds = {x, y, width, height};
     keys = k;
     color = c;
@@ -13,6 +54,7 @@ void Player::init(float x, float y, float width, float height,
     inputDirectionX = 0.0f;
     facingDirectionX = 1.0f;
     jumpRequested = false;
+    animationTime = 0.0f;
 }
 
 void Player::handleInput()
@@ -37,6 +79,8 @@ void Player::handleInput()
 void Player::update(float deltaTime, const Level& level, int screenWidth)
 {
     if (!alive) return;
+
+    animationTime += deltaTime;
 
     // colisión lateral
     float moveX = inputDirectionX * MOVE_SPEED * deltaTime;
@@ -95,7 +139,37 @@ void Player::update(float deltaTime, const Level& level, int screenWidth)
 void Player::render() const
 {
     if (alive) {
-        DrawRectangleRec(bounds, color);
+        int frame = IDLE;
+        if (!grounded) {
+            frame = velocityY < 0.0f ? JUMP : FALL;
+        } else if (inputDirectionX != 0.0f) {
+            frame = static_cast<int>(animationTime / 0.12f) % 2 == 0
+                        ? WALK_1
+                        : WALK_2;
+        }
+
+        const Texture2D& texture = animationTextures[frame];
+        if (texture.id == 0) {
+            DrawRectangleRec(bounds, color);
+            return;
+        }
+
+        const float drawHeight = bounds.height;
+        const float drawWidth = drawHeight * texture.width / texture.height;
+        Rectangle source = {0.0f, 0.0f, static_cast<float>(texture.width),
+                            static_cast<float>(texture.height)};
+        if (facingDirectionX < 0.0f) {
+            source.x = static_cast<float>(texture.width);
+            source.width = -source.width;
+        }
+
+        Rectangle destination = {
+            bounds.x + (bounds.width - drawWidth) / 2.0f,
+            bounds.y,
+            drawWidth,
+            drawHeight
+        };
+        DrawTexturePro(texture, source, destination, {0.0f, 0.0f}, 0.0f, WHITE);
     }
 }
 
