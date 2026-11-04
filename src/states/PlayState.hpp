@@ -3,6 +3,7 @@
 #include "entities/Player.hpp"
 #include "entities/Enemy.hpp"
 #include "objects/weapons/Weapon.hpp"
+#include "objects/weapons/MeleeWeapon.hpp"
 #include "levels/Level.hpp"
 #include <box2d/box2d.h>
 #include <raylib.h>
@@ -33,6 +34,7 @@ private:
     vector<Enemy> enemies;
     Weapon weapon1;
     Weapon weapon2;
+    MeleeWeapon knife;
     Weapon* selectedWeapon = &weapon1;
     WeaponConfig straightWeaponConfig = {};
     WeaponConfig bouncingWeaponConfig = {};

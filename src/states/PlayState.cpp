@@ -300,6 +300,10 @@ void PlayState::update(float deltaTime) {
     weapon1.update(deltaTime, level, cameraView);
     weapon2.update(deltaTime, level, cameraView);
 
+    if (player1.isAlive()) {
+      knife.update(deltaTime, player1.getBounds(), player1.getFacingDirection().x);
+    }
+
     // Impacto de balas contra los enemigos
     for (Weapon *currentWeapon : {&weapon1, &weapon2}) {
       for (auto &proj : currentWeapon->getProjectiles()) {
@@ -344,6 +348,10 @@ void PlayState::render() {
 
   weapon1.renderProjectiles();
   weapon2.renderProjectiles();
+
+  if (player1.isAlive()) {
+    knife.render();
+  }
 
   EndMode2D();
 
