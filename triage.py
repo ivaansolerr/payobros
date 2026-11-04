@@ -54,23 +54,51 @@ ROLE_ASSIGNEES = {
     "global": ["Arid3n", "ivaansolerr", "jrcb3-ua", "joaquinavarro", "jvev1"],
 }
 
+# etiquetas de issue según la terminología Github Flow
+TIPOS_NO_BUG = {"feature", "hotfix", "docs", "question"}
+
 QUESTIONS = {
+    "es_bug": {
+        "type": "noul",
+        "instructions": (
+            "¿Es `issue` un reporte de un bug o defecto? "
+            "Un bug es algo que ya existe en el proyecto y funciona de forma "
+            "incorrecta o inesperada. "
+            "Las peticiones de nuevas funcionalidades, mejoras, tareas de "
+            "documentación, hotfixes planificados o implementaciones nuevas "
+            "NO son bugs."
+        ),
+        "criteria": {
+            "true": (
+                "La issue reporta un fallo, error o comportamiento inesperado "
+                "en algo ya implementado"
+            ),
+            "false": (
+                "La issue es una funcionalidad nueva, mejora, tarea, hotfix "
+                "o documentación"
+            ),
+        },
+    },
     "tipo": {
         "type": "choice",
         "instructions": "¿Qué tipo de issue es la descrita en `issue`?",
         "criteria": {
             "bug": "Algo que existe falla o se comporta distinto a lo esperado",
             "feature": "Se pide una funcionalidad nueva o una mejora",
-            "question": "Una duda de uso; no se reporta ningún fallo",
+            "hotfix": (
+                "Corrección urgente que se aplicará directamente sobre la rama "
+                "principal o de producción"
+            ),
             "docs": "Error, carencia o mejora en la documentación",
+            "question": "Una duda de uso; no se reporta ningún fallo ni se pide nada nuevo",
         },
     },
     "severidad": {
         "type": "score",
         "instructions": (
-            "¿Qué gravedad tiene el defecto o solicitud descrita en `issue`? "
-            "Para funcionalidades muy complejas o deseos, responde wishlist. "
-            "Si no describe un defecto ni una funcionalidad compleja, responde el nivel más bajo."
+            "¿Qué gravedad tiene el defecto descrito en `issue`? "
+            "Solo evalúa si se trata de un bug real. "
+            "Si no describe un defecto, responde el nivel más bajo."
         ),
         "criteria": [
             "wishlist: funcionalidades muy complejas o deseos",
@@ -118,7 +146,7 @@ QUESTIONS = {
         "instructions": (
             "¿Qué miembro del equipo debería encargarse de la issue descrita "
             "en `issue`? Elige el rol cuya área de responsabilidad encaje mejor "
-            "con el problema o la petición."
+            "con el problema o la petición. "
             "Si no estás seguro o requiere una revisión de todo el grupo, responde `global`"
         ),
         "criteria": {
@@ -171,24 +199,26 @@ def decide(answers):
     labels = []
     sure = True  # Se pide revisión si es False
 
+    es_bug = answers["es_bug"]["noul"] >= MIN_YES
+
     tipo = answers["tipo"]
     if tipo["confidence"] >= MIN_CONFIDENCE:
         labels.append(tipo["choice"])
     else:
         sure = False
 
-    # La severidad aplica a bugs y a funcionalidades complejas o deseos (wishlist).
-    sev = answers["severidad"]
-    if "bug" in labels:
+    if es_bug:
+        sev = answers["severidad"]
         if sev["confidence"] >= MIN_CONFIDENCE:
             labels.append("severity:" + SEVERITY[round(sev["score"])])
         else:
             sure = False
         if answers["falta_info"]["noul"] >= MIN_YES:
             labels.append("needs-info")
-    elif "feature" in labels:
-        if sev["confidence"] >= MIN_CONFIDENCE and SEVERITY[round(sev["score"])] == "wishlist":
-            labels.append("severity:wishlist")
+    else:
+        if "bug" in labels:
+            labels.remove("bug")
+            labels.append("feature")  # clasificación por defecto
 
     area = answers["area"]
     if area["choice"] != "indefinido" and area["confidence"] >= MIN_CONFIDENCE:
@@ -196,11 +226,9 @@ def decide(answers):
     else:
         sure = False
 
-    # Solo se sugiere: la issue nunca se cierra automáticamente.
     if answers["duplicada"]["noul"] >= MIN_YES:
         labels.append("possible-duplicate")
 
-    # Asignación por rol del equipo.
     rol = answers["rol"]
     if rol["choice"] != "global" and rol["confidence"] >= MIN_CONFIDENCE:
         labels.append("rol:" + rol["choice"])
