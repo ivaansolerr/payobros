@@ -19,13 +19,16 @@ public:
 private:
     Rectangle onePlayerButton = {};
     Rectangle twoPlayersButton = {};
+    Rectangle skinsButton = {};
     Rectangle exitButton = {};
 
     bool onePlayerHovered = false;
     bool twoPlayersHovered = false;
+    bool skinsHovered = false;
     bool exitHovered = false;
 
     bool onePlayerPressed = false;
     bool twoPlayersPressed = false;
+    bool skinsPressed = false;
     bool exitPressed = false;
 };

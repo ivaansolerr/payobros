@@ -1,13 +1,11 @@
 #include "Player.hpp"
+#include "CharacterSkin.hpp"
 #include "levels/Level.hpp" 
+#include <string>
 
 namespace {
-constexpr const char* ANIMATION_PATHS[] = {
-    "src/assets/characters/adventurer/adventurer_idle.png",
-    "src/assets/characters/adventurer/adventurer_walk1.png",
-    "src/assets/characters/adventurer/adventurer_walk2.png",
-    "src/assets/characters/adventurer/adventurer_jump.png",
-    "src/assets/characters/adventurer/adventurer_fall.png"
+constexpr const char* ANIMATION_POSES[] = {
+    "idle", "walk1", "walk2", "jump", "fall"
 };
 }
 
@@ -19,11 +17,16 @@ Player::~Player()
 void Player::loadAnimationTextures()
 {
     unloadAnimationTextures();
+    const CharacterSkinInfo& skin = getCharacterSkinInfo(
+        getSelectedCharacterSkin());
     for (int i = 0; i < ANIMATION_FRAME_COUNT; ++i) {
-        animationTextures[i] = LoadTexture(ANIMATION_PATHS[i]);
+        const std::string path =
+            std::string("src/assets/characters/") + skin.folder + "/" +
+            skin.prefix + "_" + ANIMATION_POSES[i] + ".png";
+        animationTextures[i] = LoadTexture(path.c_str());
         if (animationTextures[i].id == 0) {
             TraceLog(LOG_ERROR, "PLAYER: no se pudo cargar el sprite %s",
-                     ANIMATION_PATHS[i]);
+                     path.c_str());
         }
     }
 }
