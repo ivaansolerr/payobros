@@ -13,6 +13,10 @@ struct PlayerKeys {
 class Player {
 public:
     Player() = default;
+    ~Player();
+
+    Player(const Player&) = delete;
+    Player& operator=(const Player&) = delete;
 
     void init(float x, float y, float width, float height,
               PlayerKeys keys, Color color);
@@ -37,10 +41,21 @@ public:
     void bounceOnEnemy(float enemyTopY, bool extraJumpImpulse = true);
 
 private:
+    enum AnimationFrame {
+        IDLE,
+        WALK_1,
+        WALK_2,
+        JUMP,
+        FALL,
+        ANIMATION_FRAME_COUNT
+    };
+
     Rectangle bounds = {0, 0, 0, 0};
     PlayerKeys keys = {};
     Color color = RED;
     bool alive = true;
+    Texture2D animationTextures[ANIMATION_FRAME_COUNT] = {};
+    float animationTime = 0.0f;
 
     float velocityY = 0.0f;
     bool grounded = false;
@@ -53,4 +68,7 @@ private:
     float inputDirectionX = 0.0f;
     float facingDirectionX = 1.0f;
     bool jumpRequested = false;
+
+    void loadAnimationTextures();
+    void unloadAnimationTextures();
 };
