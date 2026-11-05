@@ -14,6 +14,7 @@ void PlayState::init() {
 
   weapon1.clear();
   weapon2.clear();
+  knife.clear();
   level.clearPhysicsBodies(physicsWorld);
   physicsAccumulator = 0.0f;
   level.load("src/assets/fondo.tmx");
@@ -95,6 +96,7 @@ void PlayState::handleInput() {
     }
 
     player1.handleInput();
+    knife.handleInput(); 
 
     if (numPlayers >= 2) {
       player2.handleInput();
