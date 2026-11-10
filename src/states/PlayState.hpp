@@ -8,6 +8,9 @@
 #include <box2d/box2d.h>
 #include <raylib.h>
 
+// Arma que tiene equipada el jugador 1
+enum class WeaponType { Straight, Bouncing, Knife };
+
 class PlayState : public GameState
 {
 public:
@@ -41,7 +44,7 @@ private:
     Level level;
     Camera2D camera = { 0 }; // scroll lateral
 
-    bool bouncingWeaponSelected = false;
+    WeaponType currentWeapon = WeaponType::Straight;
     bool gameOver = false;
     bool restartRequested = false;
 };

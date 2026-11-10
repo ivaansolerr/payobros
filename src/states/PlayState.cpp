@@ -50,7 +50,7 @@ void PlayState::init() {
   bouncingWeaponConfig.projectile.maxBounces = 6;
   bouncingWeaponConfig.projectile.color = ORANGE;
   bouncingWeaponConfig.fireCooldown = 0.2f;
-  bouncingWeaponSelected = false;
+  currentWeapon = WeaponType::Straight;
   weapon1.setConfig(straightWeaponConfig);
   weapon2.setConfig(bouncingWeaponConfig);
   selectedWeapon = &weapon1;
@@ -85,26 +85,34 @@ void PlayState::handleInput() {
 
   if (!gameOver) {
     if (IsKeyPressed(KEY_ONE)) {
-      bouncingWeaponSelected = false;
+      currentWeapon = WeaponType::Straight;
       selectedWeapon = &weapon1;
     } else if (IsKeyPressed(KEY_TWO)) {
-      bouncingWeaponSelected = true;
+      currentWeapon = WeaponType::Bouncing;
       selectedWeapon = &weapon2;
+    } else if (IsKeyPressed(KEY_THREE)) {
+      currentWeapon = WeaponType::Knife;
     }
-    if (IsKeyPressed(KEY_R)) {
+
+    // El cuchillo no tiene cargador: solo se recargan las armas de fuego
+    if (IsKeyPressed(KEY_R) && currentWeapon != WeaponType::Knife) {
       selectedWeapon->reload();
     }
 
     player1.handleInput();
-    knife.handleInput(); 
 
     if (numPlayers >= 2) {
       player2.handleInput();
     }
 
+    // El clic acuchilla o dispara según el arma equipada
     if (player1.isAlive()) {
-      selectedWeapon->handleInput(player1.getWeaponOrigin(),
-                                  player1.getFacingDirection(), physicsWorld);
+      if (currentWeapon == WeaponType::Knife) {
+        knife.handleInput();
+      } else {
+        selectedWeapon->handleInput(player1.getWeaponOrigin(),
+                                    player1.getFacingDirection(), physicsWorld);
+      }
     }
   } else {
     if (IsKeyPressed(KEY_R)) {
@@ -307,8 +315,8 @@ void PlayState::update(float deltaTime) {
     }
 
     // Impacto de balas contra los enemigos
-    for (Weapon *currentWeapon : {&weapon1, &weapon2}) {
-      for (auto &proj : currentWeapon->getProjectiles()) {
+    for (Weapon *gun : {&weapon1, &weapon2}) {
+      for (auto &proj : gun->getProjectiles()) {
         if (!proj->isActive()) continue;
 
         for (auto &enemy : enemies) {
@@ -368,7 +376,7 @@ void PlayState::render() {
     DrawText(controls, 10, 10, 14, DARKGRAY);
     DrawText(
         TextFormat("%s | Municion: %d/%d%s",
-                   bouncingWeaponSelected ? "Rebotadora" : "Recta",
+                   currentWeapon == WeaponType::Bouncing ? "Rebotadora" : "Recta",
                    selectedWeapon->getAmmoInMagazine(),
                    selectedWeapon->getMagazineCapacity(),
                    selectedWeapon->isReloading() ? " | Recargando..." : ""),
