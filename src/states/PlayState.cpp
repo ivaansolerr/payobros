@@ -312,6 +312,14 @@ void PlayState::update(float deltaTime) {
 
     if (player1.isAlive()) {
       knife.update(deltaTime, player1.getBounds(), player1.getFacingDirection().x);
+
+      if (knife.isAttacking()) {
+        for (auto &enemy : enemies) {
+          if (enemy.isAlive() && CheckCollisionRecs(knife.getHitbox(), enemy.getBounds())) {
+            enemy.kill();
+          }
+        }
+      }
     }
 
     // Impacto de balas contra los enemigos
@@ -369,18 +377,29 @@ void PlayState::render() {
   if (!gameOver) {
     const char *controls =
         numPlayers == 1
-            ? "A/D: Moverse | ESPACIO: Saltar | Click: Disparar | 1: Recta | "
-              "2: Rebotadora | R: Recargar | M: Men\u00fa"
+            ? "A/D: Moverse | ESPACIO: Saltar | Click: Atacar | 1: Recta | "
+              "2: Rebotadora | 3: Cuchillo | R: Recargar | M: Men\u00fa"
             : "P1 (Rojo): A/D/Espacio + Click | P2 (Azul): Flechas | 1: Recta "
-              "| 2: Rebotadora | R: Recargar | M: Men\u00fa";
+              "| 2: Rebotadora | 3: Cuchillo | R: Recargar | M: Men\u00fa";
     DrawText(controls, 10, 10, 14, DARKGRAY);
-    DrawText(
-        TextFormat("%s | Municion: %d/%d%s",
-                   currentWeapon == WeaponType::Bouncing ? "Rebotadora" : "Recta",
-                   selectedWeapon->getAmmoInMagazine(),
-                   selectedWeapon->getMagazineCapacity(),
-                   selectedWeapon->isReloading() ? " | Recargando..." : ""),
-        10, 30, 16, DARKGRAY);
+
+    // Arma equipada: el cuchillo no tiene munici\u00f3n
+    if (currentWeapon == WeaponType::Knife) {
+      DrawText("Cuchillo | Cuerpo a cuerpo", 10, 30, 16, DARKGRAY);
+    } else {
+      const char *weaponName = "Recta";
+      if (currentWeapon == WeaponType::Bouncing) {
+        weaponName = "Rebotadora";
+      }
+
+      DrawText(
+          TextFormat("%s | Municion: %d/%d%s",
+                     weaponName,
+                     selectedWeapon->getAmmoInMagazine(),
+                     selectedWeapon->getMagazineCapacity(),
+                     selectedWeapon->isReloading() ? " | Recargando..." : ""),
+          10, 30, 16, DARKGRAY);
+    }
 
     if (numPlayers == 1) {
       Rectangle pb = player1.getBounds();
