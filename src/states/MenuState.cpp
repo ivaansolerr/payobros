@@ -1,5 +1,6 @@
 #include "MenuState.hpp"
 #include "PlayState.hpp"
+#include "SkinSelectState.hpp"
 #include "core/StateMachine.hpp"
 
 void MenuState::init()
@@ -11,15 +12,18 @@ void MenuState::init()
     const float btnHeight = 46.0f;
     const float btnX = (screenWidth - btnWidth) / 2.0f;
 
-    onePlayerButton   = { btnX, screenHeight * 0.40f, btnWidth, btnHeight };
-    twoPlayersButton  = { btnX, screenHeight * 0.53f, btnWidth, btnHeight };
-    exitButton        = { btnX, screenHeight * 0.66f, btnWidth, btnHeight };
+    onePlayerButton   = { btnX, screenHeight * 0.36f, btnWidth, btnHeight };
+    twoPlayersButton  = { btnX, screenHeight * 0.47f, btnWidth, btnHeight };
+    skinsButton       = { btnX, screenHeight * 0.58f, btnWidth, btnHeight };
+    exitButton        = { btnX, screenHeight * 0.69f, btnWidth, btnHeight };
 
     onePlayerHovered = false;
     twoPlayersHovered = false;
+    skinsHovered = false;
     exitHovered = false;
     onePlayerPressed = false;
     twoPlayersPressed = false;
+    skinsPressed = false;
     exitPressed = false;
 }
 
@@ -27,9 +31,11 @@ void MenuState::resume()
 {
     onePlayerHovered = false;
     twoPlayersHovered = false;
+    skinsHovered = false;
     exitHovered = false;
     onePlayerPressed = false;
     twoPlayersPressed = false;
+    skinsPressed = false;
     exitPressed = false;
     SetMouseCursor(MOUSE_CURSOR_DEFAULT);
 }
@@ -40,9 +46,10 @@ void MenuState::handleInput()
 
     onePlayerHovered  = CheckCollisionPointRec(mousePos, onePlayerButton);
     twoPlayersHovered = CheckCollisionPointRec(mousePos, twoPlayersButton);
+    skinsHovered      = CheckCollisionPointRec(mousePos, skinsButton);
     exitHovered       = CheckCollisionPointRec(mousePos, exitButton);
 
-    if (onePlayerHovered || twoPlayersHovered || exitHovered) {
+    if (onePlayerHovered || twoPlayersHovered || skinsHovered || exitHovered) {
         SetMouseCursor(MOUSE_CURSOR_POINTING_HAND);
     } else {
         SetMouseCursor(MOUSE_CURSOR_DEFAULT);
@@ -54,6 +61,10 @@ void MenuState::handleInput()
 
     if (twoPlayersHovered && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
         twoPlayersPressed = true;
+    }
+
+    if (skinsHovered && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        skinsPressed = true;
     }
 
     if (exitHovered && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
@@ -77,6 +88,10 @@ void MenuState::update(float deltaTime)
         twoPlayersPressed = false;
         SetMouseCursor(MOUSE_CURSOR_DEFAULT);
         stateMachine->addState(std::make_unique<PlayState>(2), false);
+    } else if (skinsPressed) {
+        skinsPressed = false;
+        SetMouseCursor(MOUSE_CURSOR_DEFAULT);
+        stateMachine->addState(std::make_unique<SkinSelectState>(), false);
     } else if (exitPressed) {
         exitPressed = false;
         SetMouseCursor(MOUSE_CURSOR_DEFAULT);
@@ -98,7 +113,7 @@ void MenuState::render()
         DrawText(title, (screenWidth - titleWidth) / 2, (int)(screenHeight * 0.14f), titleFontSize, DARKBLUE);
 
         // Subtítulo
-        const char* subTitle = "Selecciona el modo de juego";
+        const char* subTitle = "Selecciona un modo de juego o personaliza tu personaje";
         const int subFontSize = 18;
         const int subWidth = MeasureText(subTitle, subFontSize);
         DrawText(subTitle, (screenWidth - subWidth) / 2, (int)(screenHeight * 0.28f), subFontSize, DARKGRAY);
@@ -126,6 +141,9 @@ void MenuState::render()
 
         // Botón 2 Jugadores
         drawButton(twoPlayersButton, twoPlayersHovered, "2 JUGADORES", DARKBLUE, SKYBLUE);
+
+        // Botón Aspectos
+        drawButton(skinsButton, skinsHovered, "ASPECTOS", DARKGREEN, LIME);
 
         // Botón Salir
         drawButton(exitButton, exitHovered, "SALIR", MAROON, Color{ 255, 205, 205, 255 });

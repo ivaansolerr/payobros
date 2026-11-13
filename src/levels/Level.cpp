@@ -142,8 +142,8 @@ bool Level::load(const string& tmxPath)
 
     const float groundY = 14.0f * tileHeight;
 
-    constexpr float playerWidth = 40.0f;
-    constexpr float playerHeight = 80.0f;
+    const float playerWidth = static_cast<float>(tileWidth);
+    const float playerHeight = static_cast<float>(tileHeight * 2);
     playerSpawn = {30.0f, groundY - playerHeight, playerWidth, playerHeight};
 
     enemySpawns.clear();
