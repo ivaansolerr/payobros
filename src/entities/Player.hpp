@@ -35,6 +35,9 @@ public:
     bool isAlive() const { return alive; }
     void kill() { alive = false; }
 
+    int getHealth() const { return health; }
+    int getMaxHealth() const { return MAX_HEALTH; }
+
     bool hasFallenOff(int screenHeight) const;;
 
     bool isFalling() const { return velocityY > 0.0f; }
@@ -59,6 +62,9 @@ private:
 
     float velocityY = 0.0f;
     bool grounded = false;
+
+    static constexpr int MAX_HEALTH = 3;
+    int health = MAX_HEALTH;
 
     static constexpr float MOVE_SPEED = 220.0f;
     static constexpr float GRAVITY = 950.0f;

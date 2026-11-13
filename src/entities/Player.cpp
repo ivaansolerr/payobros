@@ -49,6 +49,7 @@ void Player::init(float x, float y, float width, float height,
     keys = k;
     color = c;
     alive = true;
+    health = MAX_HEALTH;
     velocityY = 0.0f;
     grounded = false;
     inputDirectionX = 0.0f;
