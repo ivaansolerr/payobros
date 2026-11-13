@@ -148,7 +148,7 @@ void PlayState::update(float deltaTime) {
           player1.bounceOnEnemy(eb.y, true);
           enemy.kill();
         } else {
-          player1.kill();
+          player1.takeDamage(1);
         }
       }
 
@@ -162,7 +162,7 @@ void PlayState::update(float deltaTime) {
           player2.bounceOnEnemy(eb.y, true);
           enemy.kill();
         } else {
-          player2.kill();
+          player2.takeDamage(1);
         }
       }
     }
@@ -223,7 +223,7 @@ void PlayState::update(float deltaTime) {
             player1.bounceOnEnemy(enemy.getBounds().y, true);
             enemy.kill();
           } else {
-            player1.kill();
+            player1.takeDamage(1);
           }
         }
         if (numPlayers >= 2 && player2.isAlive() && CheckCollisionRecs(player2.getBounds(), enemy.getBounds())) {
@@ -234,7 +234,7 @@ void PlayState::update(float deltaTime) {
             player2.bounceOnEnemy(enemy.getBounds().y, true);
             enemy.kill();
           } else {
-            player2.kill();
+            player2.takeDamage(1);
           }
         }
       }
@@ -349,6 +349,7 @@ void PlayState::render() {
 
   // UI
   if (!gameOver) {
+    DrawText(TextFormat("Vida: %d", player1.getHealth()), 10, 90, 20, RED); // TEMPORAL
     const char *controls =
         numPlayers == 1
             ? "A/D: Moverse | ESPACIO: Saltar | Click: Disparar | 1: Recta | "

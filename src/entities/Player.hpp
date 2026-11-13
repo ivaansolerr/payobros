@@ -38,6 +38,9 @@ public:
     int getHealth() const { return health; }
     int getMaxHealth() const { return MAX_HEALTH; }
 
+    bool isInvulnerable() const {return invulnerableTimer > 0.0f;}
+    bool takeDamage(int amount);
+
     bool hasFallenOff(int screenHeight) const;;
 
     bool isFalling() const { return velocityY > 0.0f; }
@@ -65,6 +68,9 @@ private:
 
     static constexpr int MAX_HEALTH = 3;
     int health = MAX_HEALTH;
+
+    static constexpr float INVULNERABLE_TIME = 1.0f; 
+    float invulnerableTimer = 0.0f;
 
     static constexpr float MOVE_SPEED = 220.0f;
     static constexpr float GRAVITY = 950.0f;

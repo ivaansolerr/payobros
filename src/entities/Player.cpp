@@ -50,6 +50,7 @@ void Player::init(float x, float y, float width, float height,
     color = c;
     alive = true;
     health = MAX_HEALTH;
+    invulnerableTimer = 0.0f;
     velocityY = 0.0f;
     grounded = false;
     inputDirectionX = 0.0f;
@@ -82,6 +83,10 @@ void Player::update(float deltaTime, const Level& level, int screenWidth)
     if (!alive) return;
 
     animationTime += deltaTime;
+
+    if(invulnerableTimer > 0.0f){
+        invulnerableTimer -= deltaTime;
+    }
 
     // colisión lateral
     float moveX = inputDirectionX * MOVE_SPEED * deltaTime;
@@ -198,4 +203,27 @@ void Player::bounceOnEnemy(float enemyTopY, bool extraJumpImpulse) {
         velocityY = 0.0f;               // Se queda apoyado como un bloque normal
         grounded = true;
     }
+}
+
+bool Player::takeDamage(int amount){
+
+    if(!alive){
+        return false;
+    }
+
+    if(isInvulnerable()){
+        return false;
+    }
+
+    health -= amount;
+
+    if(health <= 0){
+        health = 0;
+        alive = false;
+        return true;
+    }
+    
+    invulnerableTimer = INVULNERABLE_TIME;
+
+    return true;
 }
