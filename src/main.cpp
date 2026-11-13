@@ -16,34 +16,36 @@ int main()
 
     float deltaTime = 0.0f;
 
-    StateMachine stateMachine;
-    stateMachine.addState(std::make_unique<MenuState>(), false);
-    stateMachine.handleStateChanges(deltaTime);
-
-    while (!stateMachine.isGameEnding() && !WindowShouldClose())
     {
-        // Alternar pantalla completa con F11 (modo sin bordes para evitar parpadeos y pantalla negra)
-        if (IsKeyPressed(KEY_F11))
-        {
-            ToggleBorderlessWindowed();
-        }
-
-        deltaTime = GetFrameTime();
+        StateMachine stateMachine;
+        stateMachine.addState(std::make_unique<MenuState>(), false);
         stateMachine.handleStateChanges(deltaTime);
 
-        if (stateMachine.isGameEnding() || !stateMachine.hasStates())
+        while (!stateMachine.isGameEnding() && !WindowShouldClose())
         {
-            break;
+            // Alternar pantalla completa con F11 (modo sin bordes para evitar parpadeos y pantalla negra)
+            if (IsKeyPressed(KEY_F11))
+            {
+                ToggleBorderlessWindowed();
+            }
+
+            deltaTime = GetFrameTime();
+            stateMachine.handleStateChanges(deltaTime);
+
+            if (stateMachine.isGameEnding() || !stateMachine.hasStates())
+            {
+                break;
+            }
+
+            stateMachine.getCurrentState()->handleInput();
+            stateMachine.getCurrentState()->update(deltaTime);
+
+            // BeginDrawing/EndDrawing centralizado: cada estado solo dibuja su contenido
+            BeginDrawing();
+            stateMachine.getCurrentState()->render();
+            EndDrawing();
         }
-
-        stateMachine.getCurrentState()->handleInput();
-        stateMachine.getCurrentState()->update(deltaTime);
-
-        // BeginDrawing/EndDrawing centralizado: cada estado solo dibuja su contenido
-        BeginDrawing();
-        stateMachine.getCurrentState()->render();
-        EndDrawing();
-    }
+    } 
 
     CloseWindow();
     return 0;
