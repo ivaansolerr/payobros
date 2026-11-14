@@ -145,6 +145,12 @@ void Player::update(float deltaTime, const Level& level, int screenWidth)
 void Player::render() const
 {
     if (alive) {
+        if (isInvulnerable()) {
+            const int blink = static_cast<int>(invulnerableTimer * 10.0f);
+            if (blink % 2 == 0) {
+                return;
+            }
+        }
         int frame = IDLE;
         if (!grounded) {
             frame = velocityY < 0.0f ? JUMP : FALL;
