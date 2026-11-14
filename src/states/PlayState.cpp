@@ -167,7 +167,7 @@ void PlayState::update(float deltaTime) {
           player1.bounceOnEnemy(eb.y, true);
           enemy.kill();
         } else {
-          player1.takeDamage(1);
+          player1.takeDamage(1,enemy.getCenter().x);
         }
       }
 
@@ -181,7 +181,7 @@ void PlayState::update(float deltaTime) {
           player2.bounceOnEnemy(eb.y, true);
           enemy.kill();
         } else {
-          player2.takeDamage(1);
+          player2.takeDamage(1,enemy.getCenter().x);
         }
       }
     }
@@ -242,7 +242,7 @@ void PlayState::update(float deltaTime) {
             player1.bounceOnEnemy(enemy.getBounds().y, true);
             enemy.kill();
           } else {
-            player1.takeDamage(1);
+            player1.takeDamage(1,enemy.getCenter().x);
           }
         }
         if (numPlayers >= 2 && player2.isAlive() && CheckCollisionRecs(player2.getBounds(), enemy.getBounds())) {
@@ -253,7 +253,7 @@ void PlayState::update(float deltaTime) {
             player2.bounceOnEnemy(enemy.getBounds().y, true);
             enemy.kill();
           } else {
-            player2.takeDamage(1);
+            player2.takeDamage(1,enemy.getCenter().x);
           }
         }
       }

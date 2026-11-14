@@ -51,6 +51,7 @@ void Player::init(float x, float y, float width, float height,
     alive = true;
     health = MAX_HEALTH;
     invulnerableTimer = 0.0f;
+    knockbackVelocityX = 0.0f;
     velocityY = 0.0f;
     grounded = false;
     inputDirectionX = 0.0f;
@@ -88,8 +89,20 @@ void Player::update(float deltaTime, const Level& level, int screenWidth)
         invulnerableTimer -= deltaTime;
     }
 
+    if(knockbackVelocityX > 0.0f){
+        knockbackVelocityX -= KNOCKBACK_DECAY * deltaTime;
+        if(knockbackVelocityX < 0.0f){
+            knockbackVelocityX = 0.0f;
+        }
+    }else if(knockbackVelocityX < 0.0f){
+        knockbackVelocityX += KNOCKBACK_DECAY * deltaTime;
+        if(knockbackVelocityX > 0.0f){
+            knockbackVelocityX = 0.0f;
+        }
+    }
+
     // colisión lateral
-    float moveX = inputDirectionX * MOVE_SPEED * deltaTime;
+    float moveX = (inputDirectionX * MOVE_SPEED + knockbackVelocityX) * deltaTime;
     bounds.x += moveX;
 
     // Colisión contra plataformas en el eje X
@@ -211,7 +224,7 @@ void Player::bounceOnEnemy(float enemyTopY, bool extraJumpImpulse) {
     }
 }
 
-bool Player::takeDamage(int amount){
+bool Player::takeDamage(int amount, float fromX){
 
     if(!alive){
         return false;
@@ -230,6 +243,15 @@ bool Player::takeDamage(int amount){
     }
     
     invulnerableTimer = INVULNERABLE_TIME;
+
+    if(getCenter().x < fromX){
+        knockbackVelocityX = -KNOCKBACK_SPEED;
+    }else{
+        knockbackVelocityX = KNOCKBACK_SPEED;
+    }
+
+    velocityY = KNOCKBACK_JUMP;
+    grounded = false;
 
     return true;
 }

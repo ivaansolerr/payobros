@@ -39,7 +39,7 @@ public:
     int getMaxHealth() const { return MAX_HEALTH; }
 
     bool isInvulnerable() const {return invulnerableTimer > 0.0f;}
-    bool takeDamage(int amount);
+    bool takeDamage(int amount,float fromX);
 
     bool hasFallenOff(int screenHeight) const;;
 
@@ -75,6 +75,12 @@ private:
     static constexpr float MOVE_SPEED = 220.0f;
     static constexpr float GRAVITY = 950.0f;
     static constexpr float JUMP_FORCE = -420.0f;
+
+    // Empuje al recibir daño
+    static constexpr float KNOCKBACK_SPEED = 200.0f;  
+    static constexpr float KNOCKBACK_JUMP = -150.0f;  
+    static constexpr float KNOCKBACK_DECAY = 900.0f;  // cuanto frena el empuje por segundo
+    float knockbackVelocityX = 0.0f;
 
     // Input almacenado entre handleInput() y update()
     float inputDirectionX = 0.0f;
