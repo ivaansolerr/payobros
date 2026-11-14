@@ -7,6 +7,25 @@
 #define screenWidth GetScreenWidth()
 #define screenHeight GetScreenHeight()
 
+static void drawHealth(int x, int y, int health, int maxHealth,Color color){
+
+  for(int i = 0;i < maxHealth; i++){
+    Color heartColor = LIGHTGRAY;
+    if(i < health){
+      heartColor = color;
+    }
+
+    const float hx = static_cast<float>(x + i * 22);
+    const float hy = static_cast<float>(y);
+    
+    // dos círculos arriba y un triángulo hacia abajo
+    DrawCircleV({hx + 5.0f, hy + 5.0f}, 5.0f, heartColor);
+    DrawCircleV({hx + 13.0f, hy + 5.0f}, 5.0f, heartColor);
+    DrawTriangle({hx, hy + 7.0f}, {hx + 9.0f, hy + 17.0f}, {hx + 18.0f, hy + 7.0f}, heartColor);
+  }
+}
+
+
 PlayState::PlayState(int numPlayers)
     : physicsWorld({0.0f, 9.8f}), numPlayers(numPlayers) {}
 
@@ -349,7 +368,12 @@ void PlayState::render() {
 
   // UI
   if (!gameOver) {
-    DrawText(TextFormat("Vida: %d", player1.getHealth()), 10, 90, 20, RED); // TEMPORAL
+
+    drawHealth(screenWidth - 80, 10, player1.getHealth(), player1.getMaxHealth(), MAROON);
+    if (numPlayers >= 2) {
+      drawHealth(screenWidth - 80, 32, player2.getHealth(), player2.getMaxHealth(), DARKBLUE);
+    }
+
     const char *controls =
         numPlayers == 1
             ? "A/D: Moverse | ESPACIO: Saltar | Click: Disparar | 1: Recta | "
