@@ -3,9 +3,13 @@
 #include "entities/Player.hpp"
 #include "entities/Enemy.hpp"
 #include "objects/weapons/Weapon.hpp"
+#include "objects/weapons/MeleeWeapon.hpp"
 #include "levels/Level.hpp"
 #include <box2d/box2d.h>
 #include <raylib.h>
+
+// Arma que tiene equipada el jugador 1
+enum class WeaponType { Straight, Bouncing, Knife };
 
 class PlayState : public GameState
 {
@@ -33,13 +37,14 @@ private:
     vector<Enemy> enemies;
     Weapon weapon1;
     Weapon weapon2;
+    MeleeWeapon knife;
     Weapon* selectedWeapon = &weapon1;
     WeaponConfig straightWeaponConfig = {};
     WeaponConfig bouncingWeaponConfig = {};
     Level level;
     Camera2D camera = { 0 }; // scroll lateral
 
-    bool bouncingWeaponSelected = false;
+    WeaponType currentWeapon = WeaponType::Straight;
     bool gameOver = false;
     bool restartRequested = false;
 };

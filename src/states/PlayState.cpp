@@ -14,6 +14,7 @@ void PlayState::init() {
 
   weapon1.clear();
   weapon2.clear();
+  knife.clear();
   level.clearPhysicsBodies(physicsWorld);
   physicsAccumulator = 0.0f;
   level.load("src/assets/fondo.tmx");
@@ -49,7 +50,7 @@ void PlayState::init() {
   bouncingWeaponConfig.projectile.maxBounces = 6;
   bouncingWeaponConfig.projectile.color = ORANGE;
   bouncingWeaponConfig.fireCooldown = 0.2f;
-  bouncingWeaponSelected = false;
+  currentWeapon = WeaponType::Straight;
   weapon1.setConfig(straightWeaponConfig);
   weapon2.setConfig(bouncingWeaponConfig);
   selectedWeapon = &weapon1;
@@ -84,13 +85,17 @@ void PlayState::handleInput() {
 
   if (!gameOver) {
     if (IsKeyPressed(KEY_ONE)) {
-      bouncingWeaponSelected = false;
+      currentWeapon = WeaponType::Straight;
       selectedWeapon = &weapon1;
     } else if (IsKeyPressed(KEY_TWO)) {
-      bouncingWeaponSelected = true;
+      currentWeapon = WeaponType::Bouncing;
       selectedWeapon = &weapon2;
+    } else if (IsKeyPressed(KEY_THREE)) {
+      currentWeapon = WeaponType::Knife;
     }
-    if (IsKeyPressed(KEY_R)) {
+
+    // El cuchillo no tiene cargador: solo se recargan las armas de fuego
+    if (IsKeyPressed(KEY_R) && currentWeapon != WeaponType::Knife) {
       selectedWeapon->reload();
     }
 
@@ -100,9 +105,14 @@ void PlayState::handleInput() {
       player2.handleInput();
     }
 
+    // El clic acuchilla o dispara según el arma equipada
     if (player1.isAlive()) {
-      selectedWeapon->handleInput(player1.getWeaponOrigin(),
-                                  player1.getFacingDirection(), physicsWorld);
+      if (currentWeapon == WeaponType::Knife) {
+        knife.handleInput();
+      } else {
+        selectedWeapon->handleInput(player1.getWeaponOrigin(),
+                                    player1.getFacingDirection(), physicsWorld);
+      }
     }
   } else {
     if (IsKeyPressed(KEY_R)) {
@@ -300,9 +310,21 @@ void PlayState::update(float deltaTime) {
     weapon1.update(deltaTime, level, cameraView);
     weapon2.update(deltaTime, level, cameraView);
 
+    if (player1.isAlive()) {
+      knife.update(deltaTime, player1.getBounds(), player1.getFacingDirection().x);
+
+      if (knife.isAttacking()) {
+        for (auto &enemy : enemies) {
+          if (enemy.isAlive() && CheckCollisionRecs(knife.getHitbox(), enemy.getBounds())) {
+            enemy.kill();
+          }
+        }
+      }
+    }
+
     // Impacto de balas contra los enemigos
-    for (Weapon *currentWeapon : {&weapon1, &weapon2}) {
-      for (auto &proj : currentWeapon->getProjectiles()) {
+    for (Weapon *gun : {&weapon1, &weapon2}) {
+      for (auto &proj : gun->getProjectiles()) {
         if (!proj->isActive()) continue;
 
         for (auto &enemy : enemies) {
@@ -345,24 +367,39 @@ void PlayState::render() {
   weapon1.renderProjectiles();
   weapon2.renderProjectiles();
 
+  if (player1.isAlive()) {
+    knife.render();
+  }
+
   EndMode2D();
 
   // UI
   if (!gameOver) {
     const char *controls =
         numPlayers == 1
-            ? "A/D: Moverse | ESPACIO: Saltar | Click: Disparar | 1: Recta | "
-              "2: Rebotadora | R: Recargar | M: Men\u00fa"
+            ? "A/D: Moverse | ESPACIO: Saltar | Click: Atacar | 1: Recta | "
+              "2: Rebotadora | 3: Cuchillo | R: Recargar | M: Men\u00fa"
             : "P1 (Rojo): A/D/Espacio + Click | P2 (Azul): Flechas | 1: Recta "
-              "| 2: Rebotadora | R: Recargar | M: Men\u00fa";
+              "| 2: Rebotadora | 3: Cuchillo | R: Recargar | M: Men\u00fa";
     DrawText(controls, 10, 10, 14, DARKGRAY);
-    DrawText(
-        TextFormat("%s | Municion: %d/%d%s",
-                   bouncingWeaponSelected ? "Rebotadora" : "Recta",
-                   selectedWeapon->getAmmoInMagazine(),
-                   selectedWeapon->getMagazineCapacity(),
-                   selectedWeapon->isReloading() ? " | Recargando..." : ""),
-        10, 30, 16, DARKGRAY);
+
+    // Arma equipada: el cuchillo no tiene munici\u00f3n
+    if (currentWeapon == WeaponType::Knife) {
+      DrawText("Cuchillo | Cuerpo a cuerpo", 10, 30, 16, DARKGRAY);
+    } else {
+      const char *weaponName = "Recta";
+      if (currentWeapon == WeaponType::Bouncing) {
+        weaponName = "Rebotadora";
+      }
+
+      DrawText(
+          TextFormat("%s | Municion: %d/%d%s",
+                     weaponName,
+                     selectedWeapon->getAmmoInMagazine(),
+                     selectedWeapon->getMagazineCapacity(),
+                     selectedWeapon->isReloading() ? " | Recargando..." : ""),
+          10, 30, 16, DARKGRAY);
+    }
 
     if (numPlayers == 1) {
       Rectangle pb = player1.getBounds();
