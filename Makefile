@@ -1,5 +1,5 @@
 CXX      ?= g++
-CXXFLAGS := -Wall -Wextra -std=c++17 -O2
+CXXFLAGS := -Wall -Wextra -std=c++17 -O2 -MMD -MP
 LIBS     := -Lvendor/lib -lbox2d -lraylib -lGL -lm -lpthread -lrt -lX11
 
 INCLUDES := $(shell find src -type d -exec echo -I{} \;) -Ivendor/include
