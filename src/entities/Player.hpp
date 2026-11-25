@@ -91,6 +91,14 @@ private:
     Texture2D animationTextures[ANIMATION_FRAME_COUNT] = {};
     float animationTime = 0.0f;
 
+    // Ciclo de carrera opcional (<prefix>_run1..4.png). Si la skin no lo trae
+    // completo se usa la alternancia WALK_1 / WALK_2.
+    static constexpr int RUN_FRAME_COUNT = 4;
+    static constexpr float RUN_FRAME_TIME = 0.15f;
+    static constexpr float WALK_FRAME_TIME = 0.12f;
+    Texture2D runTextures[RUN_FRAME_COUNT] = {};
+    bool hasRunCycle = false;
+
     float velocityY = 0.0f;
     bool grounded = false;
 

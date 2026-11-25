@@ -61,6 +61,31 @@ void Player::loadAnimationTextures()
                      path.c_str());
         }
     }
+
+    // Ciclo de carrera opcional: solo se usa si están los 4 fotogramas
+    hasRunCycle = true;
+    for (int i = 0; i < RUN_FRAME_COUNT; ++i) {
+        const std::string path =
+            std::string("src/assets/characters/") + skin.folder + "/" +
+            skin.prefix + "_run" + std::to_string(i + 1) + ".png";
+        if (!FileExists(path.c_str())) {
+            hasRunCycle = false;
+            break;
+        }
+        runTextures[i] = LoadTexture(path.c_str());
+        if (runTextures[i].id == 0) {
+            hasRunCycle = false;
+            break;
+        }
+    }
+    if (!hasRunCycle) {
+        for (Texture2D& texture : runTextures) {
+            if (texture.id != 0) {
+                UnloadTexture(texture);
+                texture = {};
+            }
+        }
+    }
 }
 
 void Player::unloadAnimationTextures()
@@ -71,6 +96,13 @@ void Player::unloadAnimationTextures()
             texture = {};
         }
     }
+    for (Texture2D& texture : runTextures) {
+        if (texture.id != 0) {
+            UnloadTexture(texture);
+            texture = {};
+        }
+    }
+    hasRunCycle = false;
 }
 
 void Player::init(float x, float y, float width, float height,
@@ -294,6 +326,7 @@ void Player::render() const
             }
         }
         int frame = IDLE;
+        const Texture2D* runFrame = nullptr;
         if (state == PlayerState::CLIMBING) {
             frame = (inputDirectionY != 0.0f)
                 ? (static_cast<int>(animationTime / 0.15f) % 2 == 0 ? WALK_1 : WALK_2)
@@ -301,12 +334,18 @@ void Player::render() const
         } else if (!grounded) {
             frame = velocityY < 0.0f ? JUMP : FALL;
         } else if (inputDirectionX != 0.0f) {
-            frame = static_cast<int>(animationTime / 0.12f) % 2 == 0
-                        ? WALK_1
-                        : WALK_2;
+            if (hasRunCycle) {
+                const int i = static_cast<int>(animationTime / RUN_FRAME_TIME) %
+                              RUN_FRAME_COUNT;
+                runFrame = &runTextures[i];
+            } else {
+                frame = static_cast<int>(animationTime / WALK_FRAME_TIME) % 2 == 0
+                            ? WALK_1
+                            : WALK_2;
+            }
         }
 
-        const Texture2D& texture = animationTextures[frame];
+        const Texture2D& texture = runFrame ? *runFrame : animationTextures[frame];
         if (texture.id == 0) {
             DrawRectangleRec(bounds, color);
             return;
