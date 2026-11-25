@@ -43,6 +43,7 @@ private:
     Weapon weapon1;
     Weapon weapon2;
     MeleeWeapon knife;
+    Weapon enemyWeapon;
     Weapon* selectedWeapon = &weapon1;
     WeaponConfig straightWeaponConfig = {};
     WeaponConfig bouncingWeaponConfig = {};
