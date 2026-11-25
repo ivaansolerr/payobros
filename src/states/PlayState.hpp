@@ -8,9 +8,15 @@
 #include "levels/Level.hpp"
 #include <box2d/box2d.h>
 #include <raylib.h>
+#include <vector>
 
 // Arma que tiene equipada el jugador 1
 enum class WeaponType { Straight, Bouncing, Knife };
+
+struct WeaponVisualEntry {
+    WeaponType type;
+    WeaponVisualConfig visual;
+};
 
 class PlayState : public GameState
 {
@@ -18,10 +24,7 @@ public:
     // explicit -> Evita conversiones implícitas
     // previene de cambios de estado implicitos indeseados al pasar parametros a stateMachine
     explicit PlayState(int numPlayers = 1);
-    ~PlayState() override {
-        level.unload();
-        if (background.id != 0) UnloadTexture(background);
-    }
+    ~PlayState() override;
 
     void init() override;
     void handleInput() override;
@@ -49,10 +52,18 @@ private:
     WeaponConfig bouncingWeaponConfig = {};
     Level level;
     Texture2D background = {};          // fondo con parallax
+    // Añadir aquí el arte y las proporciones; Player se ocupa del renderizado.
+    std::vector<WeaponVisualEntry> weaponVisuals = {
+        {WeaponType::Bouncing,
+         WeaponVisualConfig{"src/assets/weapons/bouncing_launcher.png", 0.45f}}
+    };
     Camera2D camera = { 0 }; // scroll lateral
     float baseZoomMultiplier = 1.25f; // > 1.0f acerca la cámara, < 1.0f la aleja
 
     WeaponType currentWeapon = WeaponType::Straight;
     bool gameOver = false;
     bool restartRequested = false;
+
+    WeaponVisualConfig* getWeaponVisual(WeaponType type);
+    const WeaponVisualConfig* getWeaponVisual(WeaponType type) const;
 };
