@@ -33,7 +33,7 @@ public:
     Level() = default;
 
     // Carga el mapa desde un archivo .tmx de Tiled. Devuelve false si falla.
-    bool load(const string& tmxPath);
+    bool load(const string& tmxPath, int levelNumber = 1);
     // Libera la textura del tileset y vacía los datos del mapa.
     void unload();
 
