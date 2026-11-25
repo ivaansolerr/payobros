@@ -29,6 +29,39 @@ static void drawHealth(int x, int y, int health, int maxHealth,Color color){
 PlayState::PlayState(int numPlayers)
     : physicsWorld({0.0f, 9.8f}), numPlayers(numPlayers) {}
 
+PlayState::~PlayState()
+{
+  level.unload();
+  if (background.id != 0) {
+    UnloadTexture(background);
+  }
+  for (WeaponVisualEntry& entry : weaponVisuals) {
+    if (entry.visual.texture.id != 0) {
+      UnloadTexture(entry.visual.texture);
+    }
+  }
+}
+
+WeaponVisualConfig* PlayState::getWeaponVisual(WeaponType type)
+{
+  for (WeaponVisualEntry& entry : weaponVisuals) {
+    if (entry.type == type) {
+      return &entry.visual;
+    }
+  }
+  return nullptr;
+}
+
+const WeaponVisualConfig* PlayState::getWeaponVisual(WeaponType type) const
+{
+  for (const WeaponVisualEntry& entry : weaponVisuals) {
+    if (entry.type == type) {
+      return &entry.visual;
+    }
+  }
+  return nullptr;
+}
+
 void PlayState::init() {
 
   weapon1.clear();
@@ -41,6 +74,15 @@ void PlayState::init() {
   level.createPhysicsBodies(physicsWorld);
   if (background.id == 0) {
     background = LoadTexture("src/assets/backgrounds/bg_kitchen.png");
+  }
+  for (WeaponVisualEntry& entry : weaponVisuals) {
+    if (entry.visual.texture.id == 0) {
+      entry.visual.texture = LoadTexture(entry.visual.texturePath);
+      if (entry.visual.texture.id == 0) {
+        TraceLog(LOG_ERROR, "WEAPON: no se pudo cargar %s",
+                 entry.visual.texturePath);
+      }
+    }
   }
 
   SpawnPoint ps = level.getPlayerSpawn();
@@ -147,8 +189,16 @@ void PlayState::handleInput() {
       if (currentWeapon == WeaponType::Knife) {
         knife.handleInput();
       } else {
-        selectedWeapon->handleInput(player1.getWeaponOrigin(),
-                                    player1.getFacingDirection(), physicsWorld);
+        const WeaponVisualConfig* weaponVisual =
+            getWeaponVisual(currentWeapon);
+        const Vector2 weaponOrigin = weaponVisual != nullptr
+            ? player1.getAttachedWeaponOrigin(*weaponVisual)
+            : player1.getWeaponOrigin();
+        const Vector2 weaponDirection = weaponVisual != nullptr
+            ? player1.getAttachedWeaponDirection(*weaponVisual)
+            : player1.getFacingDirection();
+        selectedWeapon->handleInput(weaponOrigin,
+                                    weaponDirection, physicsWorld);
       }
     }
   } else {
@@ -439,7 +489,7 @@ void PlayState::render() {
     }
   }
 
-  player1.render();
+  player1.render(getWeaponVisual(currentWeapon));
   if (numPlayers >= 2) {
     player2.render();
   }
