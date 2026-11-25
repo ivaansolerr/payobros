@@ -27,7 +27,7 @@ private:
   Rectangle bounds = {0, 0, 0, 0};
   bool alive = true;
   EnemyType type = EnemyType::Shooter;
-  const float MOVE_SPEED = 100.0f;
+  float moveSpeed = 100.0f;
   const float DETECTION_RADIUS = 200.0f;
   static constexpr float SHOOT_COOLDOWN = 2.0f;
   static constexpr float SHOOT_RANGE = 350.0f;
