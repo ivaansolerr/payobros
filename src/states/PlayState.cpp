@@ -38,6 +38,9 @@ void PlayState::init() {
   physicsAccumulator = 0.0f;
   level.load("src/assets/fondo.tmx");
   level.createPhysicsBodies(physicsWorld);
+  if (background.id == 0) {
+    background = LoadTexture("src/assets/backgrounds/bg_kitchen.png");
+  }
 
   SpawnPoint ps = level.getPlayerSpawn();
 
@@ -367,6 +370,18 @@ void PlayState::render() {
   ClearBackground(RAYWHITE);
 
   BeginMode2D(camera);
+
+  // Fondo con parallax: recorre el fondo de borde a borde a lo largo del nivel
+  if (background.id != 0) {
+    const float viewW = GetScreenWidth() / camera.zoom;  // ancho visible en mundo
+    const float camLeft = camera.target.x - camera.offset.x / camera.zoom;
+    const float mapW = level.getWidth();
+    const float bgW = static_cast<float>(background.width);
+    const float range = mapW - viewW;
+    const float t = range > 0.0f ? camLeft / range : 0.0f;
+    const float bgX = camLeft - t * (bgW - viewW);
+    DrawTexture(background, static_cast<int>(bgX), 0, WHITE);
+  }
 
   // Nivel (plataformas)
   level.render();

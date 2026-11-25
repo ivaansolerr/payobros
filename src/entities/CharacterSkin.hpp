@@ -7,7 +7,8 @@ enum class CharacterSkin {
     Female,
     Player,
     Soldier,
-    Zombie
+    Zombie,
+    Mayo
 };
 
 struct CharacterSkinInfo {
@@ -22,7 +23,8 @@ inline constexpr CharacterSkinInfo CHARACTER_SKINS[] = {
     {CharacterSkin::Female, "Female", "female", "female"},
     {CharacterSkin::Player, "Player", "player", "player"},
     {CharacterSkin::Soldier, "Soldier", "soldier", "soldier"},
-    {CharacterSkin::Zombie, "Zombie", "zombie", "zombie"}
+    {CharacterSkin::Zombie, "Zombie", "zombie", "zombie"},
+    {CharacterSkin::Mayo, "Mayo", "mayo", "mayo"}
 };
 
 inline constexpr std::size_t CHARACTER_SKIN_COUNT =

@@ -17,7 +17,10 @@ public:
     // explicit -> Evita conversiones implícitas
     // previene de cambios de estado implicitos indeseados al pasar parametros a stateMachine
     explicit PlayState(int numPlayers = 1);
-    ~PlayState() override { level.unload(); }
+    ~PlayState() override {
+        level.unload();
+        if (background.id != 0) UnloadTexture(background);
+    }
 
     void init() override;
     void handleInput() override;
@@ -42,6 +45,7 @@ private:
     WeaponConfig straightWeaponConfig = {};
     WeaponConfig bouncingWeaponConfig = {};
     Level level;
+    Texture2D background = {};          // fondo con parallax
     Camera2D camera = { 0 }; // scroll lateral
 
     WeaponType currentWeapon = WeaponType::Straight;

@@ -1,6 +1,7 @@
 #include "Level.hpp"
 #include "core/PhysicsUnits.hpp"
 #include <sstream>
+#include <unordered_map>
 
 using namespace std;
 
@@ -28,6 +29,47 @@ static int getIntAttr(const string& xml, const string& name, size_t tagStart, in
     else
         return stoi(value);     
 
+}
+
+static float getFloatAttr(const string& xml, const string& name, size_t tagStart, float fallback)
+{
+    const string value = getAttr(xml, name, tagStart);
+    return value.empty() ? fallback : stof(value);
+}
+
+// Tiles sólidas del .tsx: las que tienen un objeto de tipo "Plataforma" en su
+// capa de colisión (como se dibuja en el editor de colisiones de Tiled).
+// Devuelve GID -> rectángulo de colisión relativo a la casilla.
+static unordered_map<int, Rectangle> readSolidTiles(const string& tsx, int firstGid,
+                                                     int tileWidth, int tileHeight)
+{
+    unordered_map<int, Rectangle> solid;
+    size_t pos = 0;
+    while ((pos = tsx.find("<tile ", pos)) != string::npos) {
+        const size_t tagEnd = tsx.find('>', pos);
+        if (tagEnd == string::npos) break;
+        if (tsx[tagEnd - 1] == '/') {  // <tile .../> sin colisión
+            pos = tagEnd;
+            continue;
+        }
+        const int id = getIntAttr(tsx, "id", pos, -1);
+        const size_t blockEnd = tsx.find("</tile>", tagEnd);
+        const size_t object = tsx.find("<object ", tagEnd);
+        if (id >= 0 && object != string::npos && object < blockEnd) {
+            string kind = getAttr(tsx, "type", object);
+            if (kind.empty()) kind = getAttr(tsx, "class", object);
+            if (kind == "Plataforma") {
+                solid[firstGid + id] = {
+                    getFloatAttr(tsx, "x", object, 0.0f),
+                    getFloatAttr(tsx, "y", object, 0.0f),
+                    getFloatAttr(tsx, "width", object, static_cast<float>(tileWidth)),
+                    getFloatAttr(tsx, "height", object, static_cast<float>(tileHeight))
+                };
+            }
+        }
+        pos = blockEnd == string::npos ? tagEnd : blockEnd;
+    }
+    return solid;
 }
 
 static bool readTextFile(const string& path, string& out)
@@ -106,9 +148,19 @@ bool Level::load(const string& tmxPath)
     TraceLog(LOG_INFO, "LEVEL: Tileset %s: %d columnas, imagen %s",
              tsxFile.c_str(), tilesetColumns, imageFile.c_str());
 
+    // Si el tileset no marca ninguna tile como "Plataforma", se usa SOLID_GID
+    unordered_map<int, Rectangle> solidTiles =
+        readSolidTiles(tsx, firstGid, tileWidth, tileHeight);
+    if (solidTiles.empty()) {
+        solidTiles[SOLID_GID] = {0.0f, 0.0f, static_cast<float>(tileWidth),
+                                 static_cast<float>(tileHeight)};
+    }
+    TraceLog(LOG_INFO, "LEVEL: %d tiles sólidas en el tileset",
+             static_cast<int>(solidTiles.size()));
+
     platforms.clear();
     ammoBoxes.clear();
-    
+
     for (int i = 0; i < static_cast<int>(tiles.size()); i++) {  
         const int gid = tiles[i];
 
@@ -119,11 +171,12 @@ bool Level::load(const string& tmxPath)
         const float posY = static_cast<float>(mapRow * tileHeight);
 
         // Si es suelo sólido
-        if (gid == SOLID_GID) {
-            platforms.push_back({ 
-                posX, posY, 
-                static_cast<float>(tileWidth), 
-                static_cast<float>(tileHeight) 
+        const auto solid = solidTiles.find(gid);
+        if (solid != solidTiles.end()) {
+            const Rectangle& shape = solid->second;
+            platforms.push_back({
+                posX + shape.x, posY + shape.y,
+                shape.width, shape.height
             });
         }
         // Si es caja de munición
