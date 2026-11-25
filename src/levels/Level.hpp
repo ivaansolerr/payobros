@@ -1,4 +1,5 @@
 #pragma once
+#include "entities/EnemyType.hpp"
 #include <raylib.h>
 #include <string>
 #include <vector>
@@ -17,6 +18,7 @@ struct SpawnPoint {
     float y;
     float width;
     float height;
+    EnemyType type = EnemyType::Shooter;   // solo lo usan los spawns de enemigos
 };
 
 // Estructura para la caja de munición

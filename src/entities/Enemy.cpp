@@ -3,9 +3,16 @@
 #include <cmath>
 #include <raylib.h>
 
-void Enemy::init(float x, float y, float width, float height) {
+void Enemy::init(float x, float y, float width, float height, EnemyType type) {
   bounds = {x, y, width, height};
   alive = true;
+  this->type = type;
+  if (type == EnemyType::Shooter) {
+    moveSpeed = 100.0f;
+  }
+  else if (type == EnemyType::Melee) {
+    moveSpeed = 150.0f;
+  }
   shootTimer = SHOOT_COOLDOWN;
 }
 
@@ -17,6 +24,11 @@ void Enemy::update(float deltaTime, Vector2 targetPos, const Level &level) {
     shootTimer -= deltaTime;
   }
 
+  if (type == EnemyType::Melee) {
+    patrol(deltaTime, level);
+    return;
+  }
+
   Vector2 center = getCenter();
   float dx = targetPos.x - center.x;
   float dy = targetPos.y - center.y;
@@ -24,9 +36,9 @@ void Enemy::update(float deltaTime, Vector2 targetPos, const Level &level) {
   if (distance <= DETECTION_RADIUS) {
     float moveX = 0.0f;
     if (dx > 0) {
-      moveX += MOVE_SPEED * deltaTime;
+      moveX += moveSpeed * deltaTime;
     } else if (dx < 0) {
-      moveX -= MOVE_SPEED * deltaTime;
+      moveX -= moveSpeed * deltaTime;
     }
 
     if (moveX != 0.0f) {
@@ -54,7 +66,8 @@ void Enemy::update(float deltaTime, Vector2 targetPos, const Level &level) {
 
 void Enemy::render() const {
   if (alive) {
-    DrawRectangleRec(bounds, BLACK);
+    Color color = (type == EnemyType::Melee) ? BLACK : DARKPURPLE;
+    DrawRectangleRec(bounds, color);
   }
 }
 
@@ -63,7 +76,7 @@ Vector2 Enemy::getCenter() const {
 }
 
 bool Enemy::tryShoot(Vector2 targetPos) {
-  if (!alive || shootTimer > 0.0f) {
+  if (!alive || type != EnemyType::Shooter || shootTimer > 0.0f) {
     return false;
   }
 
@@ -77,4 +90,27 @@ bool Enemy::tryShoot(Vector2 targetPos) {
 
   shootTimer = SHOOT_COOLDOWN;  
   return true;
+}
+
+void Enemy::patrol(float deltaTime, const Level &level) {
+  float moveX = direction * moveSpeed * deltaTime;
+
+  float probeX;
+  if (direction > 0.0f) {
+    probeX = bounds.x + bounds.width + moveX;
+  } else {
+    probeX = bounds.x + moveX;
+  }
+
+  Rectangle groundSensor = {probeX, bounds.y + bounds.height + 2.0f, 2.0f, 2.0f};
+  Rectangle nextBounds = {bounds.x + moveX, bounds.y, bounds.width, bounds.height};
+
+  bool hasGroundedAhead = (level.checkCollision(groundSensor) != nullptr);
+  bool hitsWall = (level.checkCollision(nextBounds) != nullptr);
+
+  if (hasGroundedAhead && !hitsWall) {
+    bounds.x += moveX;
+  } else {
+    direction = -direction;   // pared o borde: media vuelta
+  }
 }
