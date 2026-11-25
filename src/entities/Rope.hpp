@@ -8,11 +8,7 @@ struct Rope {
     Vector2 bottomPoint = {0.0f, 0.0f}; // Extremo inferior
     float length = 0.0f;                // Distancia euclídea precalculada
 
-    Rope(){
-        id = 0; 
-        topPoint, bottomPoint = {0.0f, 0.0f}; 
-        length = 0.0f;
-    }
+    Rope() = default;
 
     Rope(int id, Vector2 arriba, Vector2 abajo) {
         this->id = id;
