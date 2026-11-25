@@ -63,7 +63,7 @@ void PlayState::init() {
   enemies.clear();
   for (const SpawnPoint& sp : level.getEnemySpawns()) {
     Enemy e;
-    e.init(sp.x, sp.y, sp.width, sp.height);
+    e.init(sp.x, sp.y, sp.width, sp.height, sp.type);
     enemies.push_back(e);
   }
 

@@ -3,9 +3,10 @@
 #include <cmath>
 #include <raylib.h>
 
-void Enemy::init(float x, float y, float width, float height) {
+void Enemy::init(float x, float y, float width, float height, EnemyType type) {
   bounds = {x, y, width, height};
   alive = true;
+  this->type = type;
   shootTimer = SHOOT_COOLDOWN;
 }
 
@@ -54,7 +55,8 @@ void Enemy::update(float deltaTime, Vector2 targetPos, const Level &level) {
 
 void Enemy::render() const {
   if (alive) {
-    DrawRectangleRec(bounds, BLACK);
+    Color color = (type == EnemyType::Melee) ? BLACK : DARKPURPLE;
+    DrawRectangleRec(bounds, color);
   }
 }
 
@@ -63,7 +65,7 @@ Vector2 Enemy::getCenter() const {
 }
 
 bool Enemy::tryShoot(Vector2 targetPos) {
-  if (!alive || shootTimer > 0.0f) {
+  if (!alive || type != EnemyType::Shooter || shootTimer > 0.0f) {
     return false;
   }
 
