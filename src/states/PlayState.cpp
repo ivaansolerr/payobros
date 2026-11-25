@@ -99,7 +99,7 @@ void PlayState::init() {
   camera.target = {player1.getBounds().x, 0.0f};
   camera.rotation = 0.0f;
   float scaleY = static_cast<float>(screenHeight) / 640.0f;
-  camera.zoom = scaleY > 0.0f ? scaleY : 1.0f;
+  camera.zoom = (scaleY > 0.0f ? scaleY : 1.0f) * baseZoomMultiplier;
 }
 
 void PlayState::handleInput() {
@@ -322,7 +322,7 @@ void PlayState::update(float deltaTime) {
     }
 
     float scaleY = static_cast<float>(screenHeight) / (mapHeightPx > 0.0f ? mapHeightPx : 640.0f);
-    camera.zoom = scaleY > 0.0f ? scaleY : 1.0f;
+    camera.zoom = (scaleY > 0.0f ? scaleY : 1.0f) * baseZoomMultiplier;
     camera.offset = {static_cast<float>(screenWidth) / 2.0f, 0.0f};
 
     // Suavizado de cámara (lerp)

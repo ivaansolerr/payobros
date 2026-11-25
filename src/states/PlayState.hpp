@@ -50,6 +50,7 @@ private:
     Level level;
     Texture2D background = {};          // fondo con parallax
     Camera2D camera = { 0 }; // scroll lateral
+    float baseZoomMultiplier = 1.25f; // > 1.0f acerca la cámara, < 1.0f la aleja
 
     WeaponType currentWeapon = WeaponType::Straight;
     bool gameOver = false;

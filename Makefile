@@ -2,6 +2,7 @@ CXX      ?= g++
 CXXFLAGS := -Wall -Wextra -std=c++17 -O2 -MMD -MP
 LIBS     := -Lvendor/lib -lbox2d -lraylib -lGL -lm -lpthread -lrt -lX11
 
+# Por el Box2D
 INCLUDES := $(shell find src -type d -exec echo -I{} \;) -Ivendor/include
 
 SRCS := $(shell find src -type f -name '*.cpp')
