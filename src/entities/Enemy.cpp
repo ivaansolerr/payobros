@@ -6,11 +6,16 @@
 void Enemy::init(float x, float y, float width, float height) {
   bounds = {x, y, width, height};
   alive = true;
+  shootTimer = SHOOT_COOLDOWN;
 }
 
 void Enemy::update(float deltaTime, Vector2 targetPos, const Level &level) {
   if (!alive)
     return;
+
+  if (shootTimer > 0.0f) {
+    shootTimer -= deltaTime;
+  }
 
   Vector2 center = getCenter();
   float dx = targetPos.x - center.x;
@@ -55,4 +60,21 @@ void Enemy::render() const {
 
 Vector2 Enemy::getCenter() const {
   return {bounds.x + bounds.width / 2.0f, bounds.y + bounds.height / 2.0f};
+}
+
+bool Enemy::tryShoot(Vector2 targetPos) {
+  if (!alive || shootTimer > 0.0f) {
+    return false;
+  }
+
+  Vector2 center = getCenter();
+  float dx = targetPos.x - center.x;
+  float dy = targetPos.y - center.y;
+  float distance = sqrt(dx * dx + dy * dy);
+  if (distance > SHOOT_RANGE) {
+    return false;   
+  }
+
+  shootTimer = SHOOT_COOLDOWN;  
+  return true;
 }

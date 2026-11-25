@@ -18,9 +18,15 @@ public:
   void kill() { alive = false; }
   void revive() { alive = true; }
 
+  bool tryShoot(Vector2 targetPos);
+
+
 private:
   Rectangle bounds = {0, 0, 0, 0};
   bool alive = true;
   const float MOVE_SPEED = 100.0f;
   const float DETECTION_RADIUS = 200.0f;
+  static constexpr float SHOOT_COOLDOWN = 2.0f;
+  static constexpr float SHOOT_RANGE = 350.0f;
+  float shootTimer = SHOOT_COOLDOWN;
 };
