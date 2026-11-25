@@ -32,4 +32,6 @@ private:
   static constexpr float SHOOT_COOLDOWN = 2.0f;
   static constexpr float SHOOT_RANGE = 350.0f;
   float shootTimer = SHOOT_COOLDOWN;
+  void patrol(float deltaTime, const Level &level);  
+  float direction = -1.0f;
 };

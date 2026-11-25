@@ -24,6 +24,11 @@ void Enemy::update(float deltaTime, Vector2 targetPos, const Level &level) {
     shootTimer -= deltaTime;
   }
 
+  if (type == EnemyType::Melee) {
+    patrol(deltaTime, level);
+    return;
+  }
+
   Vector2 center = getCenter();
   float dx = targetPos.x - center.x;
   float dy = targetPos.y - center.y;
@@ -85,4 +90,27 @@ bool Enemy::tryShoot(Vector2 targetPos) {
 
   shootTimer = SHOOT_COOLDOWN;  
   return true;
+}
+
+void Enemy::patrol(float deltaTime, const Level &level) {
+  float moveX = direction * moveSpeed * deltaTime;
+
+  float probeX;
+  if (direction > 0.0f) {
+    probeX = bounds.x + bounds.width + moveX;
+  } else {
+    probeX = bounds.x + moveX;
+  }
+
+  Rectangle groundSensor = {probeX, bounds.y + bounds.height + 2.0f, 2.0f, 2.0f};
+  Rectangle nextBounds = {bounds.x + moveX, bounds.y, bounds.width, bounds.height};
+
+  bool hasGroundedAhead = (level.checkCollision(groundSensor) != nullptr);
+  bool hitsWall = (level.checkCollision(nextBounds) != nullptr);
+
+  if (hasGroundedAhead && !hitsWall) {
+    bounds.x += moveX;
+  } else {
+    direction = -direction;   // pared o borde: media vuelta
+  }
 }
