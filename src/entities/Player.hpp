@@ -1,13 +1,22 @@
 #pragma once
 #include <raylib.h>
+#include <vector>
+#include "Rope.hpp"
 
 class Level;
 
+enum class PlayerState {
+    NORMAL,
+    CLIMBING
+};
+
 struct PlayerKeys {
-    int left;
-    int right;
-    int jump;
-    int jumpAlt;  // tecla secundaria de salto, usar -1 si no hay
+    int left = 0;
+    int right = 0;
+    int jump = 0;
+    int jumpAlt = -1;  // tecla secundaria de salto, usar -1 si no hay
+    int up = -1;       // trepar arriba / interactuar con cuerda
+    int down = -1;     // trepar abajo
 };
 
 class Player {
@@ -46,7 +55,26 @@ public:
     bool isFalling() const { return velocityY > 0.0f; }
     void bounceOnEnemy(float enemyTopY, bool extraJumpImpulse = true);
 
+    PlayerState getState() const { return state; }
+    bool isClimbing() const { return state == PlayerState::CLIMBING; }
+    void checkRopeAttachment(const std::vector<Rope>& ropes);
+
 private:
+    static constexpr int MAX_HEALTH = 3;
+    static constexpr float INVULNERABLE_TIME = 1.0f;
+    static constexpr float MOVE_SPEED = 220.0f;
+    static constexpr float GRAVITY = 950.0f;
+    static constexpr float JUMP_FORCE = -420.0f;
+    // Empuje al recibir daño
+    static constexpr float KNOCKBACK_SPEED = 200.0f;  
+    static constexpr float KNOCKBACK_JUMP = -150.0f;  
+    static constexpr float KNOCKBACK_DECAY = 900.0f;  // cuanto frena el empuje por segundo
+    // Mecánicas de cuerda
+    static constexpr float CLIMB_SPEED = 140.0f;
+    static constexpr float ROPE_SLIDE_SPEED = 65.0f; // Velocidad de caída/deslizamiento al no pulsar nada
+    static constexpr float ROPE_DETACH_COOLDOWN = 0.25f; // Margen de tiempo para alejarse de la cuerda sin reengancharse
+
+    
     enum AnimationFrame {
         IDLE,
         WALK_1,
@@ -74,26 +102,24 @@ private:
     float velocityY = 0.0f;
     bool grounded = false;
 
-    static constexpr int MAX_HEALTH = 3;
     int health = MAX_HEALTH;
 
-    static constexpr float INVULNERABLE_TIME = 1.0f; 
     float invulnerableTimer = 0.0f;
-
-    static constexpr float MOVE_SPEED = 220.0f;
-    static constexpr float GRAVITY = 950.0f;
-    static constexpr float JUMP_FORCE = -420.0f;
-
-    // Empuje al recibir daño
-    static constexpr float KNOCKBACK_SPEED = 200.0f;  
-    static constexpr float KNOCKBACK_JUMP = -150.0f;  
-    static constexpr float KNOCKBACK_DECAY = 900.0f;  // cuanto frena el empuje por segundo
     float knockbackVelocityX = 0.0f;
 
     // Input almacenado entre handleInput() y update()
     float inputDirectionX = 0.0f;
+    float inputDirectionY = 0.0f;
     float facingDirectionX = 1.0f;
     bool jumpRequested = false;
+
+    // Estado y mecánicas de cuerda
+    PlayerState state = PlayerState::NORMAL;
+    const Rope* attachedRope = nullptr;
+    float climbProgress = 0.0f;
+    float ropeDetachTimer = 0.0f;
+
+    void updateClimbing(float deltaTime);
 
     void loadAnimationTextures();
     void unloadAnimationTextures();

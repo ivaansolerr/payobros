@@ -45,14 +45,19 @@ void PlayState::init() {
   SpawnPoint ps = level.getPlayerSpawn();
 
   // player 1 rojo
-  PlayerKeys keys1 = {KEY_A, KEY_D, KEY_SPACE, KEY_W};
+  PlayerKeys keys1 = {KEY_A, KEY_D, KEY_SPACE, -1, KEY_W, KEY_S};
   player1.init(ps.x, ps.y, ps.width, ps.height, keys1, RED);
 
-  // player 2 azul
+  // player 2 azul 
   if (numPlayers >= 2) {
-    PlayerKeys keys2 = {KEY_LEFT, KEY_RIGHT, KEY_UP, -1};
+    PlayerKeys keys2 = {KEY_LEFT, KEY_RIGHT, KEY_UP, -1, KEY_UP, KEY_DOWN};
     player2.init(ps.x + 45.0f, ps.y, ps.width, ps.height, keys2, BLUE);
   }
+
+  ropes.clear();
+  // Cuerdas
+  ropes.push_back(Rope(1, {220.0f, 220.0f}, {220.0f, 440.0f}));
+  ropes.push_back(Rope(2, {560.0f, 180.0f}, {560.0f, 440.0f}));
 
   enemies.clear();
   for (const SpawnPoint& sp : level.getEnemySpawns()) {
@@ -149,6 +154,7 @@ void PlayState::update(float deltaTime) {
     const float mapWidth = level.getWidth();
     const float mapHeightPx = level.getHeight();
     if (player1.isAlive()) {
+      player1.checkRopeAttachment(ropes);
       player1.update(deltaTime, level, mapWidth);
 
       if (player1.hasFallenOff(mapHeightPx)) {
@@ -157,6 +163,7 @@ void PlayState::update(float deltaTime) {
     }
 
     if (numPlayers >= 2 && player2.isAlive()) {
+      player2.checkRopeAttachment(ropes);
       player2.update(deltaTime, level, mapWidth);
 
       if (player2.hasFallenOff(mapHeightPx)) {
@@ -385,6 +392,13 @@ void PlayState::render() {
 
   // Nivel (plataformas)
   level.render();
+
+  // Cuerdas
+  for (const auto &rope : ropes) {
+    DrawLineEx(rope.topPoint, rope.bottomPoint, 5.0f, BROWN);
+    DrawCircleV(rope.topPoint, 4.0f, DARKBROWN);
+    DrawCircleV(rope.bottomPoint, 4.0f, DARKBROWN);
+  }
 
   // Entidades
   for (const auto &enemy : enemies) {

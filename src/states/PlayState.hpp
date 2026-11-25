@@ -2,6 +2,7 @@
 #include "core/GameState.hpp"
 #include "entities/Player.hpp"
 #include "entities/Enemy.hpp"
+#include "entities/Rope.hpp"
 #include "objects/weapons/Weapon.hpp"
 #include "objects/weapons/MeleeWeapon.hpp"
 #include "levels/Level.hpp"
@@ -38,6 +39,7 @@ private:
     Player player1;
     Player player2;
     vector<Enemy> enemies;
+    vector<Rope> ropes;
     Weapon weapon1;
     Weapon weapon2;
     MeleeWeapon knife;

@@ -7,6 +7,38 @@ namespace {
 constexpr const char* ANIMATION_POSES[] = {
     "idle", "walk1", "walk2", "jump", "fall"
 };
+
+// Distancia euclídea mínima entre un punto y un segmento de línea
+float pointToSegmentDistance(Vector2 p, Vector2 a, Vector2 b) {
+    float dx = b.x - a.x;
+    float dy = b.y - a.y;
+    float l2 = dx * dx + dy * dy;
+    if (l2 == 0.0f) {
+        float px = p.x - a.x;
+        float py = p.y - a.y;
+        return std::sqrt(px * px + py * py);
+    }
+    float t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / l2;
+    if (t < 0.0f) t = 0.0f;
+    else if (t > 1.0f) t = 1.0f;
+    float projX = a.x + t * dx;
+    float projY = a.y + t * dy;
+    float diffX = p.x - projX;
+    float diffY = p.y - projY;
+    return std::sqrt(diffX * diffX + diffY * diffY);
+}
+
+// Proyección de un punto sobre el segmento de la cuerda (0.0 = top, 1.0 = bottom)
+float calculateProgressAlongRope(Vector2 p, const Rope& rope) {
+    float dx = rope.bottomPoint.x - rope.topPoint.x;
+    float dy = rope.bottomPoint.y - rope.topPoint.y;
+    float l2 = dx * dx + dy * dy;
+    if (l2 == 0.0f) return 0.0f;
+    float t = ((p.x - rope.topPoint.x) * dx + (p.y - rope.topPoint.y) * dy) / l2;
+    if (t < 0.0f) t = 0.0f;
+    else if (t > 1.0f) t = 1.0f;
+    return t;
+}
 }
 
 Player::~Player()
@@ -87,9 +119,14 @@ void Player::init(float x, float y, float width, float height,
     velocityY = 0.0f;
     grounded = false;
     inputDirectionX = 0.0f;
+    inputDirectionY = 0.0f;
     facingDirectionX = 1.0f;
     jumpRequested = false;
     animationTime = 0.0f;
+    state = PlayerState::NORMAL;
+    attachedRope = nullptr;
+    climbProgress = 0.0f;
+    ropeDetachTimer = 0.0f;
 }
 
 void Player::handleInput()
@@ -97,10 +134,14 @@ void Player::handleInput()
     if (!alive) return;
 
     inputDirectionX = 0.0f;
+    inputDirectionY = 0.0f;
     jumpRequested = false;
 
-    if (IsKeyDown(keys.left))  inputDirectionX -= 1.0f;
-    if (IsKeyDown(keys.right)) inputDirectionX += 1.0f;
+    if (keys.left >= 0 && IsKeyDown(keys.left))   inputDirectionX -= 1.0f;
+    if (keys.right >= 0 && IsKeyDown(keys.right)) inputDirectionX += 1.0f;
+    if (keys.up >= 0 && IsKeyDown(keys.up))       inputDirectionY += 1.0f;
+    if (keys.down >= 0 && IsKeyDown(keys.down))   inputDirectionY -= 1.0f;
+
     if (inputDirectionX != 0.0f) {
         facingDirectionX = inputDirectionX > 0.0f ? 1.0f : -1.0f;
     }
@@ -119,6 +160,16 @@ void Player::update(float deltaTime, const Level& level, int screenWidth)
 
     if(invulnerableTimer > 0.0f){
         invulnerableTimer -= deltaTime;
+    }
+
+    if (ropeDetachTimer > 0.0f) {
+        ropeDetachTimer -= deltaTime;
+    }
+
+    // Si está en la cuerda, actualizamos trepado y evitamos la gravedad/colisión física
+    if (state == PlayerState::CLIMBING) {
+        updateClimbing(deltaTime);
+        return;
     }
 
     if(knockbackVelocityX > 0.0f){
@@ -187,6 +238,84 @@ void Player::update(float deltaTime, const Level& level, int screenWidth)
     }
 }
 
+void Player::checkRopeAttachment(const std::vector<Rope>& ropes)
+{
+    if (state == PlayerState::CLIMBING || !alive) return;
+    if (ropeDetachTimer > 0.0f) return;
+
+    Vector2 center = getCenter();
+    for (const auto& rope : ropes) {
+        float dist = pointToSegmentDistance(center, rope.topPoint, rope.bottomPoint);
+        // Si el cuerpo del jugador toca la cuerda (adhesión automática al entrar en contacto)
+        if (dist <= bounds.width * 0.5f + 4.0f) {
+            state = PlayerState::CLIMBING;
+            attachedRope = &rope;
+            climbProgress = calculateProgressAlongRope(center, rope);
+
+            // Centrar al jugador en la cuerda
+            bounds.x = rope.topPoint.x + (rope.bottomPoint.x - rope.topPoint.x) * climbProgress - bounds.width / 2.0f;
+            bounds.y = rope.topPoint.y + (rope.bottomPoint.y - rope.topPoint.y) * climbProgress - bounds.height / 2.0f;
+
+            velocityY = 0.0f;
+            knockbackVelocityX = 0.0f;
+            grounded = false;
+            break;
+        }
+    }
+}
+
+void Player::updateClimbing(float deltaTime)
+{
+    if (state != PlayerState::CLIMBING || attachedRope == nullptr) return;
+
+    const Rope& rope = *attachedRope;
+
+    // Saltar fuera de la cuerda
+    if (jumpRequested) {
+        state = PlayerState::NORMAL;
+        attachedRope = nullptr;
+        ropeDetachTimer = ROPE_DETACH_COOLDOWN;
+        velocityY = JUMP_FORCE * 0.85f;
+        float dirX = (inputDirectionX != 0.0f) ? inputDirectionX : (facingDirectionX * 0.5f);
+        knockbackVelocityX = dirX * MOVE_SPEED * 0.85f;
+        grounded = false;
+        return;
+    }
+
+    // Movimiento  sobre la cuerda
+    if (rope.length > 0.0f) {
+        if (inputDirectionY > 0.0f) {
+            // Subir activamente
+            climbProgress -= (CLIMB_SPEED * deltaTime) / rope.length;
+        } else if (inputDirectionY < 0.0f) {
+            // Bajar activamente
+            climbProgress += (CLIMB_SPEED * deltaTime) / rope.length;
+        } else {
+            // Deslizamiento pasivo: cae poco a poco si no pulsa nada
+            climbProgress += (ROPE_SLIDE_SPEED * deltaTime) / rope.length;
+        }
+    }
+
+    // extremos de la cuerda
+    if (climbProgress < 0.0f) {
+        climbProgress = 0.0f;
+    } else if (climbProgress >= 1.0f) {
+        state = PlayerState::NORMAL;
+        attachedRope = nullptr;
+        ropeDetachTimer = 0.3f;
+        velocityY = ROPE_SLIDE_SPEED;
+        grounded = false;
+        return;
+    }
+
+    // Interpolar posición exacta sobre la cuerda
+    bounds.x = rope.topPoint.x + (rope.bottomPoint.x - rope.topPoint.x) * climbProgress - bounds.width / 2.0f;
+    bounds.y = rope.topPoint.y + (rope.bottomPoint.y - rope.topPoint.y) * climbProgress - bounds.height / 2.0f;
+
+    velocityY = 0.0f;
+    grounded = false;
+}
+
 void Player::render() const
 {
     if (alive) {
@@ -198,7 +327,11 @@ void Player::render() const
         }
         int frame = IDLE;
         const Texture2D* runFrame = nullptr;
-        if (!grounded) {
+        if (state == PlayerState::CLIMBING) {
+            frame = (inputDirectionY != 0.0f)
+                ? (static_cast<int>(animationTime / 0.15f) % 2 == 0 ? WALK_1 : WALK_2)
+                : JUMP;
+        } else if (!grounded) {
             frame = velocityY < 0.0f ? JUMP : FALL;
         } else if (inputDirectionX != 0.0f) {
             if (hasRunCycle) {
