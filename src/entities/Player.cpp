@@ -46,6 +46,19 @@ Player::~Player()
     unloadAnimationTextures();
 }
 
+bool Player::loadOptionalPair(const char* pose, Texture2D (&out)[2])
+{
+    const CharacterSkinInfo& skin = getCharacterSkinInfo(getSelectedCharacterSkin());
+    for (int i = 0; i < 2; ++i) {
+        const std::string path = std::string("src/assets/characters/") + skin.folder +
+                                 "/" + skin.prefix + "_" + pose + std::to_string(i + 1) + ".png";
+        if (!FileExists(path.c_str())) return false;   // la skin no tiene esta animación
+        out[i] = LoadTexture(path.c_str());
+        if (out[i].id == 0) return false;
+    }
+    return true;
+}
+
 void Player::loadAnimationTextures()
 {
     unloadAnimationTextures();
@@ -86,6 +99,9 @@ void Player::loadAnimationTextures()
             }
         }
     }
+
+    hasHurt = loadOptionalPair("hurt", hurtTextures);
+    hasClimb = loadOptionalPair("climb", climbTextures);
 }
 
 void Player::unloadAnimationTextures()
@@ -103,6 +119,17 @@ void Player::unloadAnimationTextures()
         }
     }
     hasRunCycle = false;
+
+    for (Texture2D* group : {hurtTextures, climbTextures}) {
+        for (int i = 0; i < 2; ++i) {
+            if (group[i].id != 0) {
+                UnloadTexture(group[i]);
+                group[i] = {};
+            }
+        }
+    }
+    hasHurt = false;
+    hasClimb = false;
 }
 
 void Player::init(float x, float y, float width, float height,
@@ -115,6 +142,7 @@ void Player::init(float x, float y, float width, float height,
     alive = true;
     health = MAX_HEALTH;
     invulnerableTimer = 0.0f;
+    hurtTimer = 0.0f;
     knockbackVelocityX = 0.0f;
     velocityY = 0.0f;
     grounded = false;
@@ -160,6 +188,10 @@ void Player::update(float deltaTime, const Level& level, int screenWidth)
 
     if(invulnerableTimer > 0.0f){
         invulnerableTimer -= deltaTime;
+    }
+
+    if (hurtTimer > 0.0f) {
+        hurtTimer -= deltaTime;
     }
 
     if (ropeDetachTimer > 0.0f) {
@@ -325,19 +357,32 @@ void Player::render() const
                 return;
             }
         }
+        
         int frame = IDLE;
-        const Texture2D* runFrame = nullptr;
+        const Texture2D* special = nullptr;   // fotograma que no está en animationTextures
+
         if (state == PlayerState::CLIMBING) {
-            frame = (inputDirectionY != 0.0f)
-                ? (static_cast<int>(animationTime / 0.15f) % 2 == 0 ? WALK_1 : WALK_2)
-                : JUMP;
+            if (hasClimb) {
+                // trepando: alterna manos; quieto en la cuerda: primera pose
+                const int i = (inputDirectionY != 0.0f)
+                    ? static_cast<int>(animationTime / CLIMB_FRAME_TIME) % 2
+                    : 0;
+                special = &climbTextures[i];
+            } else {
+                frame = (inputDirectionY != 0.0f)
+                    ? (static_cast<int>(animationTime / 0.15f) % 2 == 0 ? WALK_1 : WALK_2)
+                    : JUMP;
+            }
+        } else if (hurtTimer > 0.0f && hasHurt) {
+            // primera mitad: golpe; segunda mitad: mareado
+            special = &hurtTextures[hurtTimer > HURT_TIME * 0.5f ? 0 : 1];
         } else if (!grounded) {
             frame = velocityY < 0.0f ? JUMP : FALL;
         } else if (inputDirectionX != 0.0f) {
             if (hasRunCycle) {
                 const int i = static_cast<int>(animationTime / RUN_FRAME_TIME) %
                               RUN_FRAME_COUNT;
-                runFrame = &runTextures[i];
+                special = &runTextures[i];
             } else {
                 frame = static_cast<int>(animationTime / WALK_FRAME_TIME) % 2 == 0
                             ? WALK_1
@@ -345,24 +390,25 @@ void Player::render() const
             }
         }
 
-        const Texture2D& texture = runFrame ? *runFrame : animationTextures[frame];
+        const Texture2D& texture = special ? *special : animationTextures[frame];
+
         if (texture.id == 0) {
             DrawRectangleRec(bounds, color);
             return;
         }
 
-        const float drawHeight = bounds.height;
+        const float drawHeight = bounds.height * texture.height / SPRITE_BASE_HEIGHT;
         const float drawWidth = drawHeight * texture.width / texture.height;
         Rectangle source = {0.0f, 0.0f, static_cast<float>(texture.width),
                             static_cast<float>(texture.height)};
-        if (facingDirectionX < 0.0f) {
+        if (facingDirectionX < 0.0f && state != PlayerState::CLIMBING) {
             source.x = static_cast<float>(texture.width);
             source.width = -source.width;
         }
 
         Rectangle destination = {
             bounds.x + (bounds.width - drawWidth) / 2.0f,
-            bounds.y,
+            bounds.y + bounds.height - drawHeight,
             drawWidth,
             drawHeight
         };
@@ -415,6 +461,7 @@ bool Player::takeDamage(int amount, float fromX){
     }
     
     invulnerableTimer = INVULNERABLE_TIME;
+    hurtTimer = HURT_TIME;
 
     if(getCenter().x < fromX){
         knockbackVelocityX = -KNOCKBACK_SPEED;

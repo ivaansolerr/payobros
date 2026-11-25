@@ -3,12 +3,8 @@
 #include <cstddef>
 
 enum class CharacterSkin {
-    Adventurer,
-    Female,
-    Player,
-    Soldier,
-    Zombie,
-    Mayo
+    Mayo,
+    Ketchup
 };
 
 struct CharacterSkinInfo {
@@ -19,12 +15,8 @@ struct CharacterSkinInfo {
 };
 
 inline constexpr CharacterSkinInfo CHARACTER_SKINS[] = {
-    {CharacterSkin::Adventurer, "Adventurer", "adventurer", "adventurer"},
-    {CharacterSkin::Female, "Female", "female", "female"},
-    {CharacterSkin::Player, "Player", "player", "player"},
-    {CharacterSkin::Soldier, "Soldier", "soldier", "soldier"},
-    {CharacterSkin::Zombie, "Zombie", "zombie", "zombie"},
-    {CharacterSkin::Mayo, "Mayo", "mayo", "mayo"}
+    {CharacterSkin::Mayo, "Mayo", "mayo", "mayo"},
+    {CharacterSkin::Ketchup, "Ketchup", "ketchup", "ketchup"}
 };
 
 inline constexpr std::size_t CHARACTER_SKIN_COUNT =
@@ -42,7 +34,7 @@ inline const CharacterSkinInfo& getCharacterSkinInfo(CharacterSkin skin)
 
 inline CharacterSkin& selectedCharacterSkinStorage()
 {
-    static CharacterSkin selectedSkin = CharacterSkin::Adventurer;
+    static CharacterSkin selectedSkin = CharacterSkin::Mayo;
     return selectedSkin;
 }
 
