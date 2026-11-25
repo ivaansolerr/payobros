@@ -34,6 +34,7 @@ void PlayState::init() {
   weapon1.clear();
   weapon2.clear();
   knife.clear();
+  enemyWeapon.clear();
   level.clearPhysicsBodies(physicsWorld);
   physicsAccumulator = 0.0f;
   level.load("src/assets/fondo.tmx");
@@ -69,6 +70,15 @@ void PlayState::init() {
   bouncingWeaponConfig.projectile.maxBounces = 6;
   bouncingWeaponConfig.projectile.color = ORANGE;
   bouncingWeaponConfig.fireCooldown = 0.2f;
+
+  WeaponConfig enemyWeaponConfig = {};
+  enemyWeaponConfig.projectile.behavior = ProjectileBehavior::Straight;
+  enemyWeaponConfig.projectile.speed = 350.0f;
+  enemyWeaponConfig.projectile.radius = 4.0f;
+  enemyWeaponConfig.projectile.color = PURPLE;
+  enemyWeaponConfig.magazineCapacity = 100000;  
+  enemyWeapon.setConfig(enemyWeaponConfig);
+
   currentWeapon = WeaponType::Straight;
   weapon1.setConfig(straightWeaponConfig);
   weapon2.setConfig(bouncingWeaponConfig);
@@ -242,6 +252,11 @@ void PlayState::update(float deltaTime) {
         }
 
         enemy.update(deltaTime, targetPos, level);
+        if (enemy.tryShoot(targetPos)) {
+          Vector2 origin = enemy.getCenter();
+          Vector2 direction = {targetPos.x - origin.x, targetPos.y - origin.y};
+          enemyWeapon.shoot(origin, direction, physicsWorld);
+        }
 
         // Comprobación de muerte por toque lateral tras el movimiento del enemigo
         if (player1.isAlive() && CheckCollisionRecs(player1.getBounds(), enemy.getBounds())) {
@@ -328,6 +343,7 @@ void PlayState::update(float deltaTime) {
     // Actualización de armas con colisión de terreno y límite de cámara
     weapon1.update(deltaTime, level, cameraView);
     weapon2.update(deltaTime, level, cameraView);
+    enemyWeapon.update(deltaTime, level, cameraView);
 
     if (player1.isAlive()) {
       knife.update(deltaTime, player1.getBounds(), player1.getFacingDirection().x);
@@ -353,6 +369,22 @@ void PlayState::update(float deltaTime) {
             break;
           }
         }
+      }
+    }
+
+    // Impacto de las balas de los enemigos contra los jugadores
+    for (auto &proj : enemyWeapon.getProjectiles()) {
+      if (!proj->isActive()) continue;
+
+      if (player1.isAlive() && proj->checkCollision(player1.getBounds())) {
+        player1.takeDamage(1, proj->getPosition().x);
+        proj->deactivate();
+        continue;
+      }
+
+      if (numPlayers >= 2 && player2.isAlive() && proj->checkCollision(player2.getBounds())) {
+        player2.takeDamage(1, proj->getPosition().x);
+        proj->deactivate();
       }
     }
   } else {
@@ -385,6 +417,8 @@ void PlayState::render() {
 
   weapon1.renderProjectiles();
   weapon2.renderProjectiles();
+  enemyWeapon.renderProjectiles();
+
 
   if (player1.isAlive()) {
     knife.render();
