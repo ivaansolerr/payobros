@@ -79,7 +79,6 @@ private:
     static constexpr float CLIMB_SPEED = 140.0f;
     static constexpr float ROPE_SLIDE_SPEED = 65.0f; // Velocidad de caída/deslizamiento al no pulsar nada
     static constexpr float ROPE_DETACH_COOLDOWN = 0.25f; // Margen de tiempo para alejarse de la cuerda sin reengancharse
-
     
     enum AnimationFrame {
         IDLE,
@@ -93,6 +92,7 @@ private:
     struct AnimationSelection {
         const Texture2D* texture;
         AnimationPose pose;
+        bool holdsWeapon;  // false en escalada y daño: no se dibuja el arma
     };
 
     struct WeaponRenderData {
@@ -140,6 +140,19 @@ private:
     const Rope* attachedRope = nullptr;
     float climbProgress = 0.0f;
     float ropeDetachTimer = 0.0f;
+
+    //Animación de daño y de escalada
+    static constexpr float HURT_TIME = 0.5f;
+    static constexpr float CLIMB_FRAME_TIME = 0.15f;
+    static constexpr float SPRITE_BASE_HEIGHT = 110.0f;
+
+    Texture2D hurtTextures[2] = {};
+    Texture2D climbTextures[2] = {};
+    bool hasHurt = false;
+    bool hasClimb = false;
+    float hurtTimer = 0.0f;
+
+    bool loadOptionalPair(const char* pose, Texture2D (&out)[2]);
 
     void updateClimbing(float deltaTime);
     AnimationSelection getAnimationSelection() const;

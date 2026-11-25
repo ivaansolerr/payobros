@@ -49,6 +49,19 @@ Player::~Player()
     unloadAnimationTextures();
 }
 
+bool Player::loadOptionalPair(const char* pose, Texture2D (&out)[2])
+{
+    const CharacterSkinInfo& skin = getCharacterSkinInfo(getSelectedCharacterSkin());
+    for (int i = 0; i < 2; ++i) {
+        const std::string path = std::string("src/assets/characters/") + skin.folder +
+                                 "/" + skin.prefix + "_" + pose + std::to_string(i + 1) + ".png";
+        if (!FileExists(path.c_str())) return false;   // la skin no tiene esta animación
+        out[i] = LoadTexture(path.c_str());
+        if (out[i].id == 0) return false;
+    }
+    return true;
+}
+
 void Player::loadAnimationTextures()
 {
     unloadAnimationTextures();
@@ -89,6 +102,9 @@ void Player::loadAnimationTextures()
             }
         }
     }
+
+    hasHurt = loadOptionalPair("hurt", hurtTextures);
+    hasClimb = loadOptionalPair("climb", climbTextures);
 }
 
 void Player::unloadAnimationTextures()
@@ -106,6 +122,17 @@ void Player::unloadAnimationTextures()
         }
     }
     hasRunCycle = false;
+
+    for (Texture2D* group : {hurtTextures, climbTextures}) {
+        for (int i = 0; i < 2; ++i) {
+            if (group[i].id != 0) {
+                UnloadTexture(group[i]);
+                group[i] = {};
+            }
+        }
+    }
+    hasHurt = false;
+    hasClimb = false;
 }
 
 void Player::init(float x, float y, float width, float height,
@@ -118,6 +145,7 @@ void Player::init(float x, float y, float width, float height,
     alive = true;
     health = MAX_HEALTH;
     invulnerableTimer = 0.0f;
+    hurtTimer = 0.0f;
     knockbackVelocityX = 0.0f;
     velocityY = 0.0f;
     grounded = false;
@@ -163,6 +191,10 @@ void Player::update(float deltaTime, const Level& level, int screenWidth)
 
     if(invulnerableTimer > 0.0f){
         invulnerableTimer -= deltaTime;
+    }
+
+    if (hurtTimer > 0.0f) {
+        hurtTimer -= deltaTime;
     }
 
     if (ropeDetachTimer > 0.0f) {
@@ -321,6 +353,21 @@ void Player::updateClimbing(float deltaTime)
 
 Player::AnimationSelection Player::getAnimationSelection() const
 {
+    // Escalada y daño tienen fotogramas propios (fuera de AnimationPose) y no
+    // llevan arma: las manos están en la cuerda o lanzadas hacia fuera.
+    if (state == PlayerState::CLIMBING && hasClimb) {
+        // trepando: alterna manos; quieto en la cuerda: primera pose
+        const int i = (inputDirectionY != 0.0f)
+            ? static_cast<int>(animationTime / CLIMB_FRAME_TIME) % 2
+            : 0;
+        return {&climbTextures[i], AnimationPose::Idle, false};
+    }
+    if (state != PlayerState::CLIMBING && hurtTimer > 0.0f && hasHurt) {
+        // primera mitad: golpe; segunda mitad: mareado
+        return {&hurtTextures[hurtTimer > HURT_TIME * 0.5f ? 0 : 1],
+                AnimationPose::Idle, false};
+    }
+
     AnimationPose pose = AnimationPose::Idle;
     if (state == PlayerState::CLIMBING) {
         if (inputDirectionY == 0.0f) {
@@ -374,7 +421,7 @@ Player::AnimationSelection Player::getAnimationSelection() const
         break;
     }
 
-    return {texture, pose};
+    return {texture, pose, true};
 }
 
 Player::WeaponRenderData Player::getWeaponRenderData(
@@ -536,7 +583,8 @@ void Player::render(const WeaponVisualConfig* weaponVisual) const
     const AnimationSelection animation = getAnimationSelection();
     const Texture2D& texture = *animation.texture;
     const bool drawWeaponVisual =
-        weaponVisual != nullptr && weaponVisual->texture.id != 0;
+        weaponVisual != nullptr && weaponVisual->texture.id != 0 &&
+        animation.holdsWeapon;
     WeaponRenderData weaponData = {};
     Vector2 gripPivot = {};
     if (drawWeaponVisual) {
@@ -572,20 +620,24 @@ void Player::render(const WeaponVisualConfig* weaponVisual) const
     if (texture.id == 0) {
         DrawRectangleRec(bounds, color);
     } else {
-        const float drawHeight = bounds.height;
+        // Proporcional a 110 px: los sprites normales ocupan la hitbox entera
+        // y climb (más alto) sale más grande, con los brazos por encima.
+        const float drawHeight = bounds.height *
+                                 static_cast<float>(texture.height) /
+                                 SPRITE_BASE_HEIGHT;
         const float drawWidth =
             drawHeight * static_cast<float>(texture.width) /
             static_cast<float>(texture.height);
         Rectangle source = {0.0f, 0.0f, static_cast<float>(texture.width),
                             static_cast<float>(texture.height)};
-        if (facingDirectionX < 0.0f) {
+        if (facingDirectionX < 0.0f && state != PlayerState::CLIMBING) {
             source.x = static_cast<float>(texture.width);
             source.width = -source.width;
         }
 
         destination = {
             bounds.x + (bounds.width - drawWidth) / 2.0f,
-            bounds.y,
+            bounds.y + bounds.height - drawHeight,
             drawWidth,
             drawHeight
         };
@@ -626,6 +678,9 @@ Vector2 Player::getAttachedWeaponOrigin(
     }
 
     const AnimationSelection animation = getAnimationSelection();
+    if (!animation.holdsWeapon) {
+        return getWeaponOrigin();
+    }
     return getWeaponRenderData(weaponVisual, animation).muzzlePosition;
 }
 
@@ -638,6 +693,9 @@ Vector2 Player::getAttachedWeaponDirection(
     }
 
     const AnimationSelection animation = getAnimationSelection();
+    if (!animation.holdsWeapon) {
+        return getFacingDirection();
+    }
     return getWeaponRenderData(weaponVisual, animation).muzzleDirection;
 }
 
@@ -675,6 +733,7 @@ bool Player::takeDamage(int amount, float fromX){
     }
     
     invulnerableTimer = INVULNERABLE_TIME;
+    hurtTimer = HURT_TIME;
 
     if(getCenter().x < fromX){
         knockbackVelocityX = -KNOCKBACK_SPEED;
