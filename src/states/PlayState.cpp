@@ -2,6 +2,7 @@
 #include "VictoryState.hpp"
 #include "PauseState.hpp"
 #include "core/StateMachine.hpp"
+#include "core/GameProgress.hpp"
 #include <algorithm>
 
 #define screenWidth GetScreenWidth()
@@ -26,8 +27,8 @@ static void drawHealth(int x, int y, int health, int maxHealth,Color color){
 }
 
 
-PlayState::PlayState(int numPlayers)
-    : physicsWorld({0.0f, 9.8f}), numPlayers(numPlayers) {}
+PlayState::PlayState(int numPlayers, int level)
+    : physicsWorld({0.0f, 9.8f}), numPlayers(numPlayers), currentLevel(level) {}
 
 PlayState::~PlayState()
 {
@@ -70,7 +71,13 @@ void PlayState::init() {
   enemyWeapon.clear();
   level.clearPhysicsBodies(physicsWorld);
   physicsAccumulator = 0.0f;
-  level.load("src/assets/fondo.tmx");
+  std::string tmxPath = "src/assets/fondo.tmx";
+  if (currentLevel == 2) {
+    tmxPath = "src/assets/nivel2.tmx";
+  } else if (currentLevel == 3) {
+    tmxPath = "src/assets/nivel3.tmx";
+  }
+  level.load(tmxPath, currentLevel);
   level.createPhysicsBodies(physicsWorld);
   if (background.id == 0) {
     background = LoadTexture("src/assets/backgrounds/bg_kitchen.png");
@@ -98,9 +105,20 @@ void PlayState::init() {
   }
 
   ropes.clear();
-  // Cuerdas
-  ropes.push_back(Rope(1, {220.0f, 220.0f}, {220.0f, 440.0f}));
-  ropes.push_back(Rope(2, {560.0f, 180.0f}, {560.0f, 440.0f}));
+  // Cuerdas según el nivel
+  if (currentLevel == 2) {
+    ropes.push_back(Rope(1, {368.0f, 180.0f}, {368.0f, 440.0f}));
+    ropes.push_back(Rope(2, {976.0f, 180.0f}, {976.0f, 440.0f}));
+    ropes.push_back(Rope(3, {1904.0f, 180.0f}, {1904.0f, 440.0f}));
+  } else if (currentLevel == 3) {
+    ropes.push_back(Rope(1, {368.0f, 180.0f}, {368.0f, 440.0f}));
+    ropes.push_back(Rope(2, {1232.0f, 180.0f}, {1232.0f, 440.0f}));
+    ropes.push_back(Rope(3, {1920.0f, 160.0f}, {1920.0f, 440.0f}));
+    ropes.push_back(Rope(4, {2224.0f, 180.0f}, {2224.0f, 440.0f}));
+  } else {
+    ropes.push_back(Rope(1, {220.0f, 220.0f}, {220.0f, 440.0f}));
+    ropes.push_back(Rope(2, {560.0f, 180.0f}, {560.0f, 440.0f}));
+  }
 
   enemies.clear();
   for (const SpawnPoint& sp : level.getEnemySpawns()) {
@@ -350,8 +368,9 @@ void PlayState::update(float deltaTime) {
                      (player2.getBounds().x >= goalX);
     if (p1Reached || p2Reached) {
       if (stateMachine) {
+        GameProgress::unlockLevel(currentLevel + 1);
         level.unload();
-        stateMachine->addState(std::make_unique<VictoryState>(), true);
+        stateMachine->addState(std::make_unique<VictoryState>(currentLevel, numPlayers), true);
         return;
       }
     }
@@ -512,6 +531,8 @@ void PlayState::render() {
     if (numPlayers >= 2) {
       drawHealth(screenWidth - 80, 32, player2.getHealth(), player2.getMaxHealth(), DARKBLUE);
     }
+
+    DrawText(TextFormat("NIVEL %d", currentLevel), screenWidth / 2 - 45, 10, 20, DARKBLUE);
 
     const char *controls =
         numPlayers == 1

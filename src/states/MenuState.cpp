@@ -3,91 +3,118 @@
 #include "SkinSelectState.hpp"
 #include "core/StateMachine.hpp"
 
+static void resetBoolArray(bool* arr, int size)
+{
+    for(int i = 0; i < size; i++){
+        arr[i] = false;
+    } 
+}
+
 void MenuState::init()
 {
-    const int screenWidth = GetScreenWidth();
+    const int screenWidth  = GetScreenWidth();
     const int screenHeight = GetScreenHeight();
 
-    const float btnWidth = 240.0f;
-    const float btnHeight = 46.0f;
-    const float btnX = (screenWidth - btnWidth) / 2.0f;
+    // --- Pestañas de modo (1P / 2P) ---
+    const float tabWidth  = 140.0f;
+    const float tabHeight = 36.0f;
+    const float tabGap    = 16.0f;
+    const float tabStartX = (screenWidth - (tabWidth * 2.0f + tabGap)) / 2.0f;
+    const float tabY      = screenHeight * 0.25f;
 
-    onePlayerButton   = { btnX, screenHeight * 0.36f, btnWidth, btnHeight };
-    twoPlayersButton  = { btnX, screenHeight * 0.47f, btnWidth, btnHeight };
-    skinsButton       = { btnX, screenHeight * 0.58f, btnWidth, btnHeight };
-    exitButton        = { btnX, screenHeight * 0.69f, btnWidth, btnHeight };
+    playerTabs[0] = { tabStartX,                   tabY, tabWidth, tabHeight };
+    playerTabs[1] = { tabStartX + tabWidth + tabGap, tabY, tabWidth, tabHeight };
 
-    onePlayerHovered = false;
-    twoPlayersHovered = false;
-    skinsHovered = false;
-    exitHovered = false;
-    onePlayerPressed = false;
-    twoPlayersPressed = false;
-    skinsPressed = false;
-    exitPressed = false;
+    // --- Botones de nivel ---
+    const float btnWidth  = 280.0f;
+    const float btnHeight = 44.0f;
+    const float btnX      = (screenWidth - btnWidth) / 2.0f;
+    const float btnStartY = screenHeight * 0.35f;
+    const float btnStepY  = screenHeight * 0.09f;
+
+    for (int i = 0; i < LEVEL_COUNT; i++) {
+        levelButtons[i] = { btnX, btnStartY + i * btnStepY, btnWidth, btnHeight };
+    }
+
+    // --- Botones de utilidad ---
+    const float utilWidth  = 220.0f;
+    const float utilHeight = 38.0f;
+    const float utilX      = (screenWidth - utilWidth) / 2.0f;
+
+    skinsButton = { utilX, screenHeight * 0.65f, utilWidth, utilHeight };
+    exitButton  = { utilX, screenHeight * 0.74f, utilWidth, utilHeight };
+
+    resetBoolArray(playerTabsHovered, 2);
+    resetBoolArray(levelButtonsHovered, LEVEL_COUNT);
+    skinsHovered  = false;
+    exitHovered   = false;
+    selectedLevel = 0;
+    skinsPressed  = false;
+    exitPressed   = false;
 }
 
 void MenuState::resume()
 {
-    onePlayerHovered = false;
-    twoPlayersHovered = false;
-    skinsHovered = false;
-    exitHovered = false;
-    onePlayerPressed = false;
-    twoPlayersPressed = false;
-    skinsPressed = false;
-    exitPressed = false;
+    resetBoolArray(playerTabsHovered, 2);
+    resetBoolArray(levelButtonsHovered, LEVEL_COUNT);
+    skinsHovered  = false;
+    exitHovered   = false;
+    selectedLevel = 0;
+    skinsPressed  = false;
+    exitPressed   = false;
     SetMouseCursor(MOUSE_CURSOR_DEFAULT);
 }
 
 void MenuState::handleInput()
 {
     Vector2 mousePos = GetMousePosition();
+    bool anyHovered  = false;
 
-    onePlayerHovered  = CheckCollisionPointRec(mousePos, onePlayerButton);
-    twoPlayersHovered = CheckCollisionPointRec(mousePos, twoPlayersButton);
-    skinsHovered      = CheckCollisionPointRec(mousePos, skinsButton);
-    exitHovered       = CheckCollisionPointRec(mousePos, exitButton);
-
-    if (onePlayerHovered || twoPlayersHovered || skinsHovered || exitHovered) {
-        SetMouseCursor(MOUSE_CURSOR_POINTING_HAND);
-    } else {
-        SetMouseCursor(MOUSE_CURSOR_DEFAULT);
+    // Pestañas de modo
+    for (int i = 0; i < 2; i++) {
+        playerTabsHovered[i] = CheckCollisionPointRec(mousePos, playerTabs[i]);
+        if (playerTabsHovered[i]) {
+            anyHovered = true;
+            if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+                selectedPlayers = i + 1;
+            }
+        }
     }
 
-    if (onePlayerHovered && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-        onePlayerPressed = true;
+    // Botones de nivel
+    for (int i = 0; i < LEVEL_COUNT; i++) {
+        const bool unlocked = GameProgress::isLevelUnlocked(i + 1);
+        levelButtonsHovered[i] = unlocked && CheckCollisionPointRec(mousePos, levelButtons[i]);
+        if (levelButtonsHovered[i]) {
+            anyHovered = true;
+            if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+                selectedLevel = i + 1;
+            }
+        }
     }
 
-    if (twoPlayersHovered && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-        twoPlayersPressed = true;
-    }
+    // Botones de utilidad
+    skinsHovered = CheckCollisionPointRec(mousePos, skinsButton);
+    exitHovered  = CheckCollisionPointRec(mousePos, exitButton);
+    anyHovered   = anyHovered || skinsHovered || exitHovered;
 
-    if (skinsHovered && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-        skinsPressed = true;
-    }
+    SetMouseCursor(anyHovered ? MOUSE_CURSOR_POINTING_HAND : MOUSE_CURSOR_DEFAULT);
 
-    if (exitHovered && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-        exitPressed = true;
-    }
+    if (skinsHovered && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) skinsPressed = true;
+    if (exitHovered  && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) exitPressed  = true;
 }
 
 void MenuState::update(float deltaTime)
 {
     (void)deltaTime;
 
-    if (IsWindowResized()) { // aa el tamaño de los botones al redimensionar pantalla
-        init();
-    }
+    if (IsWindowResized()) { init(); return; }
 
-    if (onePlayerPressed) {
-        onePlayerPressed = false;
+    if (selectedLevel > 0) {
+        const int lvl = selectedLevel;
+        selectedLevel = 0;
         SetMouseCursor(MOUSE_CURSOR_DEFAULT);
-        stateMachine->addState(std::make_unique<PlayState>(1), false);
-    } else if (twoPlayersPressed) {
-        twoPlayersPressed = false;
-        SetMouseCursor(MOUSE_CURSOR_DEFAULT);
-        stateMachine->addState(std::make_unique<PlayState>(2), false);
+        stateMachine->addState(std::make_unique<PlayState>(selectedPlayers, lvl), false);
     } else if (skinsPressed) {
         skinsPressed = false;
         SetMouseCursor(MOUSE_CURSOR_DEFAULT);
@@ -99,59 +126,97 @@ void MenuState::update(float deltaTime)
     }
 }
 
+static void drawButton(Rectangle rec, bool hovered, const char* text, Color base, Color hover)
+{
+    Color bg      = hovered ? hover    : LIGHTGRAY;
+    Color border  = hovered ? base     : GRAY;
+    Color textCol = hovered ? base     : BLACK;
+
+    DrawRectangleRec(rec, bg);
+    DrawRectangleLinesEx(rec, 2.0f, border);
+
+    const int fontSize  = 18;
+    const int textWidth = MeasureText(text, fontSize);
+    DrawText(text,
+             (int)(rec.x + (rec.width  - textWidth) / 2.0f),
+             (int)(rec.y + (rec.height - fontSize)  / 2.0f),
+             fontSize, textCol);
+}
+
 void MenuState::render()
 {
-    const int screenWidth = GetScreenWidth();
+    const int screenWidth  = GetScreenWidth();
     const int screenHeight = GetScreenHeight();
 
-        ClearBackground(RAYWHITE);
+    ClearBackground(RAYWHITE);
 
-        // Título del juego
-        const char* title = "PAYOBROS";
-        const int titleFontSize = 52;
-        const int titleWidth = MeasureText(title, titleFontSize);
-        DrawText(title, (screenWidth - titleWidth) / 2, (int)(screenHeight * 0.14f), titleFontSize, DARKBLUE);
+    // Título
+    const char* title      = "PAYOBROS";
+    const int   titleSize  = 50;
+    DrawText(title,
+             (screenWidth - MeasureText(title, titleSize)) / 2,
+             (int)(screenHeight * 0.08f), titleSize, DARKBLUE);
 
-        // Subtítulo
-        const char* subTitle = "Selecciona un modo de juego o personaliza tu personaje";
-        const int subFontSize = 18;
-        const int subWidth = MeasureText(subTitle, subFontSize);
-        DrawText(subTitle, (screenWidth - subWidth) / 2, (int)(screenHeight * 0.28f), subFontSize, DARKGRAY);
+    // Subtítulo
+    const char* sub     = "Selecciona el modo y el nivel para jugar";
+    const int   subSize = 18;
+    DrawText(sub,
+             (screenWidth - MeasureText(sub, subSize)) / 2,
+             (int)(screenHeight * 0.18f), subSize, DARKGRAY);
 
-        // Helper lambda para dibujar botones
-        auto drawButton = [](Rectangle rec, bool hovered, const char* text, Color baseColor, Color hoverColor) {
-            Color bg = hovered ? hoverColor : LIGHTGRAY;
-            Color border = hovered ? baseColor : GRAY;
-            Color textCol = hovered ? baseColor : BLACK;
+    // Pestañas 1P / 2P
+    const char* tabLabels[2] = { "1 JUGADOR", "2 JUGADORES" };
+    
+    for (int i = 0; i < 2; i++) {
+        const bool isSelected = (selectedPlayers == i + 1);
+        const bool hovered    = playerTabsHovered[i];
+        Color bg      = isSelected ? DARKBLUE : (hovered ? SKYBLUE  : LIGHTGRAY);
+        Color border  = isSelected ? DARKBLUE : (hovered ? DARKBLUE : GRAY);
+        Color textCol = isSelected ? WHITE     : (hovered ? DARKBLUE : BLACK);
 
-            DrawRectangleRec(rec, bg);
-            DrawRectangleLinesEx(rec, 2.0f, border);
+        DrawRectangleRec(playerTabs[i], bg);
+        DrawRectangleLinesEx(playerTabs[i], 2.0f, border);
 
-            const int fontSize = 20;
-            const int textWidth = MeasureText(text, fontSize);
-            DrawText(text,
-                     (int)(rec.x + (rec.width - textWidth) / 2.0f),
-                     (int)(rec.y + (rec.height - fontSize) / 2.0f),
-                     fontSize,
-                     textCol);
-        };
+        const int fontSize  = 16;
+        const int textWidth = MeasureText(tabLabels[i], fontSize);
+        DrawText(tabLabels[i],
+                 (int)(playerTabs[i].x + (playerTabs[i].width  - textWidth) / 2.0f),
+                 (int)(playerTabs[i].y + (playerTabs[i].height - fontSize)  / 2.0f),
+                 fontSize, textCol);
+    }
 
-        // Botón 1 Jugador
-        drawButton(onePlayerButton, onePlayerHovered, "1 JUGADOR", DARKBLUE, SKYBLUE);
+    // Botones de nivel
+    for (int i = 0; i < LEVEL_COUNT; i++) {
+        const bool unlocked = GameProgress::isLevelUnlocked(i + 1);
+        const bool hovered  = levelButtonsHovered[i];
 
-        // Botón 2 Jugadores
-        drawButton(twoPlayersButton, twoPlayersHovered, "2 JUGADORES", DARKBLUE, SKYBLUE);
+        Color bg, border, textCol;
+        if (!unlocked) {
+            bg      = Color{ 225, 225, 225, 255 };
+            border  = Color{ 170, 170, 170, 255 };
+            textCol = Color{ 130, 130, 130, 255 };
+        } else if (hovered) {
+            bg = SKYBLUE; border = DARKBLUE; textCol = DARKBLUE;
+        } else {
+            bg = LIGHTGRAY; border = DARKBLUE; textCol = BLACK;
+        }
 
-        // Botón Aspectos
-        drawButton(skinsButton, skinsHovered, "ASPECTOS", DARKGREEN, LIME);
+        const char* label = unlocked
+            ? TextFormat("NIVEL %d", i + 1)
+            : TextFormat("NIVEL %d  [BLOQUEADO]", i + 1);
 
-        // Botón Salir
-        drawButton(exitButton, exitHovered, "SALIR", MAROON, Color{ 255, 205, 205, 255 });
+        DrawRectangleRec(levelButtons[i], bg);
+        DrawRectangleLinesEx(levelButtons[i], 2.0f, border);
 
-        // Controles informativos
-        const char* controlsHint = "P1: A/D/ESPACIO + Ratón  |  P2: Flechas Izq/Der/Arriba";
-        const int hintFontSize = 13;
-        const int hintWidth = MeasureText(controlsHint, hintFontSize);
-        DrawText(controlsHint, (screenWidth - hintWidth) / 2, (int)(screenHeight * 0.86f), hintFontSize, GRAY);
+        const int fontSize  = 18;
+        const int textWidth = MeasureText(label, fontSize);
+        DrawText(label,
+                 (int)(levelButtons[i].x + (levelButtons[i].width  - textWidth) / 2.0f),
+                 (int)(levelButtons[i].y + (levelButtons[i].height - fontSize)  / 2.0f),
+                 fontSize, textCol);
+    }
 
+    // Botones de utilidad
+    drawButton(skinsButton, skinsHovered, "ASPECTOS", DARKGREEN, LIME);
+    drawButton(exitButton,  exitHovered,  "SALIR",    MAROON,    Color{ 255, 205, 205, 255 });
 }
