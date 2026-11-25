@@ -201,8 +201,8 @@ bool Level::load(const string& tmxPath)
 
     enemySpawns.clear();
 
-    enemySpawns.push_back({1000.0f, 440.0f, 40.0f, 40.0f});
-    enemySpawns.push_back({2800.0f, 440.0f, 40.0f, 40.0f});
+    enemySpawns.push_back({1000.0f, 440.0f, 40.0f, 40.0f, EnemyType::Melee});
+    enemySpawns.push_back({2800.0f, 440.0f, 40.0f, 40.0f, EnemyType::Shooter});
 
     return true;
 }

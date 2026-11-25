@@ -1,7 +1,9 @@
 #pragma once
 #include <raylib.h>
 #include <vector>
+#include "AnimationPose.hpp"
 #include "Rope.hpp"
+#include "WeaponAttachment.hpp"
 
 class Level;
 
@@ -34,12 +36,16 @@ public:
     // platformY -> la Y de la plataforma sobre la que está el jugador (-1 si no hay)
     // screenWidth ->  ancho de la pantalla (cacheado una vez por frame en PlayState)
     void update(float deltaTime, const Level& level, int screenWidth);
-    void render() const;
+    void render(const WeaponVisualConfig* weaponVisual = nullptr) const;
 
     Rectangle getBounds() const { return bounds; }
     Vector2 getCenter() const;
     Vector2 getFacingDirection() const { return {facingDirectionX, 0.0f}; }
     Vector2 getWeaponOrigin() const;
+    Vector2 getAttachedWeaponOrigin(
+        const WeaponVisualConfig& weaponVisual) const;
+    Vector2 getAttachedWeaponDirection(
+        const WeaponVisualConfig& weaponVisual) const;
 
     bool isAlive() const { return alive; }
     void kill() { alive = false; }
@@ -81,6 +87,23 @@ private:
         JUMP,
         FALL,
         ANIMATION_FRAME_COUNT
+    };
+
+    struct AnimationSelection {
+        const Texture2D* texture;
+        AnimationPose pose;
+        bool holdsWeapon;  // false en escalada y daño: no se dibuja el arma
+    };
+
+    struct WeaponRenderData {
+        Rectangle weaponSource;
+        Rectangle weaponDestination;
+        Rectangle handSource;
+        Rectangle handDestination;
+        Vector2 muzzlePosition;
+        Vector2 muzzleDirection;
+        float rotationDegrees;
+        bool hasHandOverlay;
     };
 
     Rectangle bounds = {0, 0, 0, 0};
@@ -132,6 +155,10 @@ private:
     bool loadOptionalPair(const char* pose, Texture2D (&out)[2]);
 
     void updateClimbing(float deltaTime);
+    AnimationSelection getAnimationSelection() const;
+    WeaponRenderData getWeaponRenderData(
+        const WeaponVisualConfig& weaponVisual,
+        const AnimationSelection& animation) const;
 
     void loadAnimationTextures();
     void unloadAnimationTextures();

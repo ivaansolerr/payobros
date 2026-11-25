@@ -1,6 +1,9 @@
 #include "Player.hpp"
 #include "CharacterSkin.hpp"
+#include "WeaponAttachmentProfiles.hpp"
 #include "levels/Level.hpp" 
+#include <algorithm>
+#include <cmath>
 #include <string>
 
 namespace {
@@ -348,57 +351,283 @@ void Player::updateClimbing(float deltaTime)
     grounded = false;
 }
 
-void Player::render() const
+Player::AnimationSelection Player::getAnimationSelection() const
 {
-    if (alive) {
-        if (isInvulnerable()) {
-            const int blink = static_cast<int>(invulnerableTimer * 10.0f);
-            if (blink % 2 == 0) {
-                return;
-            }
-        }
-        
-        int frame = IDLE;
-        const Texture2D* special = nullptr;   // fotograma que no está en animationTextures
+    // Escalada y daño tienen fotogramas propios (fuera de AnimationPose) y no
+    // llevan arma: las manos están en la cuerda o lanzadas hacia fuera.
+    if (state == PlayerState::CLIMBING && hasClimb) {
+        // trepando: alterna manos; quieto en la cuerda: primera pose
+        const int i = (inputDirectionY != 0.0f)
+            ? static_cast<int>(animationTime / CLIMB_FRAME_TIME) % 2
+            : 0;
+        return {&climbTextures[i], AnimationPose::Idle, false};
+    }
+    if (state != PlayerState::CLIMBING && hurtTimer > 0.0f && hasHurt) {
+        // primera mitad: golpe; segunda mitad: mareado
+        return {&hurtTextures[hurtTimer > HURT_TIME * 0.5f ? 0 : 1],
+                AnimationPose::Idle, false};
+    }
 
-        if (state == PlayerState::CLIMBING) {
-            if (hasClimb) {
-                // trepando: alterna manos; quieto en la cuerda: primera pose
-                const int i = (inputDirectionY != 0.0f)
-                    ? static_cast<int>(animationTime / CLIMB_FRAME_TIME) % 2
-                    : 0;
-                special = &climbTextures[i];
-            } else {
-                frame = (inputDirectionY != 0.0f)
-                    ? (static_cast<int>(animationTime / 0.15f) % 2 == 0 ? WALK_1 : WALK_2)
-                    : JUMP;
-            }
-        } else if (hurtTimer > 0.0f && hasHurt) {
-            // primera mitad: golpe; segunda mitad: mareado
-            special = &hurtTextures[hurtTimer > HURT_TIME * 0.5f ? 0 : 1];
-        } else if (!grounded) {
-            frame = velocityY < 0.0f ? JUMP : FALL;
-        } else if (inputDirectionX != 0.0f) {
-            if (hasRunCycle) {
-                const int i = static_cast<int>(animationTime / RUN_FRAME_TIME) %
+    AnimationPose pose = AnimationPose::Idle;
+    if (state == PlayerState::CLIMBING) {
+        if (inputDirectionY == 0.0f) {
+            pose = AnimationPose::Jump;
+        } else {
+            pose = static_cast<int>(animationTime / 0.15f) % 2 == 0
+                       ? AnimationPose::Walk1
+                       : AnimationPose::Walk2;
+        }
+    } else if (!grounded) {
+        pose = velocityY < 0.0f ? AnimationPose::Jump : AnimationPose::Fall;
+    } else if (inputDirectionX != 0.0f) {
+        if (hasRunCycle) {
+            const int frame = static_cast<int>(animationTime / RUN_FRAME_TIME) %
                               RUN_FRAME_COUNT;
-                special = &runTextures[i];
-            } else {
-                frame = static_cast<int>(animationTime / WALK_FRAME_TIME) % 2 == 0
-                            ? WALK_1
-                            : WALK_2;
-            }
+            pose = static_cast<AnimationPose>(
+                static_cast<int>(AnimationPose::Run1) + frame);
+        } else {
+            pose = static_cast<int>(animationTime / WALK_FRAME_TIME) % 2 == 0
+                       ? AnimationPose::Walk1
+                       : AnimationPose::Walk2;
         }
+    }
 
-        const Texture2D& texture = special ? *special : animationTextures[frame];
+    const Texture2D* texture = nullptr;
+    switch (pose) {
+    case AnimationPose::Idle:
+        texture = &animationTextures[IDLE];
+        break;
+    case AnimationPose::Walk1:
+        texture = &animationTextures[WALK_1];
+        break;
+    case AnimationPose::Walk2:
+        texture = &animationTextures[WALK_2];
+        break;
+    case AnimationPose::Jump:
+        texture = &animationTextures[JUMP];
+        break;
+    case AnimationPose::Fall:
+        texture = &animationTextures[FALL];
+        break;
+    case AnimationPose::Run1:
+    case AnimationPose::Run2:
+    case AnimationPose::Run3:
+    case AnimationPose::Run4:
+        texture = &runTextures[static_cast<int>(pose) -
+                               static_cast<int>(AnimationPose::Run1)];
+        break;
+    case AnimationPose::Count:
+        texture = &animationTextures[IDLE];
+        break;
+    }
 
-        if (texture.id == 0) {
-            DrawRectangleRec(bounds, color);
-            return;
+    return {texture, pose, true};
+}
+
+Player::WeaponRenderData Player::getWeaponRenderData(
+    const WeaponVisualConfig& weaponVisual,
+    const AnimationSelection& animation) const
+{
+    const Texture2D& weaponTexture = weaponVisual.texture;
+    const Texture2D& characterTexture = *animation.texture;
+    Rectangle handSource = {};
+    Vector2 handAnchor = {};
+    float wristAngleDegrees = 0.0f;
+    bool hasHandOverlay = characterTexture.id != 0;
+
+    if (characterTexture.id != 0) {
+        const HandPoseAttachment handAttachment = getHandPoseAttachment(
+            getSelectedCharacterSkin(),
+            animation.pose,
+            facingDirectionX > 0.0f,
+            static_cast<float>(characterTexture.width),
+            static_cast<float>(characterTexture.height));
+        handSource = handAttachment.source;
+        handAnchor = handAttachment.anchor;
+        wristAngleDegrees = handAttachment.wristAngleDegrees;
+    }
+
+    Rectangle characterDestination = bounds;
+    float characterScale = 0.0f;
+    Vector2 handPosition = {
+        bounds.x + bounds.width * (facingDirectionX > 0.0f ? 0.75f : 0.25f),
+        bounds.y + bounds.height * 0.65f
+    };
+    if (characterTexture.id != 0) {
+        characterScale = bounds.height /
+                         static_cast<float>(characterTexture.height);
+        characterDestination.width =
+            characterScale * static_cast<float>(characterTexture.width);
+        characterDestination.x =
+            bounds.x + (bounds.width - characterDestination.width) * 0.5f;
+        const float handX = facingDirectionX > 0.0f
+                                ? handAnchor.x
+                                : static_cast<float>(characterTexture.width) -
+                                      handAnchor.x;
+        handPosition = {
+            characterDestination.x + handX * characterScale,
+            characterDestination.y + handAnchor.y * characterScale
+        };
+    }
+
+    const float weaponWidth = bounds.height * weaponVisual.widthRatio;
+    const float weaponScale = weaponWidth /
+                              static_cast<float>(weaponTexture.width);
+    const float weaponHeight =
+        static_cast<float>(weaponTexture.height) * weaponScale;
+    const Vector2 grip = {
+        static_cast<float>(weaponTexture.width) *
+            weaponVisual.gripRatio.x,
+        static_cast<float>(weaponTexture.height) *
+            weaponVisual.gripRatio.y
+    };
+    const Vector2 muzzle = {
+        static_cast<float>(weaponTexture.width) *
+            weaponVisual.muzzleRatio.x,
+        static_cast<float>(weaponTexture.height) *
+            weaponVisual.muzzleRatio.y
+    };
+    const Vector2 barrelBase = {
+        static_cast<float>(weaponTexture.width) *
+            weaponVisual.barrelBaseRatio.x,
+        static_cast<float>(weaponTexture.height) *
+            weaponVisual.barrelBaseRatio.y
+    };
+    const float gripX = grip.x * weaponScale;
+    const float gripY = grip.y * weaponScale;
+    const float localGripX = facingDirectionX > 0.0f
+                                 ? gripX
+                                 : weaponWidth - gripX;
+    const float localMuzzleX =
+        facingDirectionX > 0.0f ? muzzle.x * weaponScale
+                                : weaponWidth - muzzle.x * weaponScale;
+    const float artBarrelAngle = std::atan2(
+        (muzzle.y - barrelBase.y) * weaponScale,
+        (muzzle.x - barrelBase.x) * weaponScale);
+    const float wristAngle = wristAngleDegrees * DEG2RAD;
+    const float desiredBarrelAngle = facingDirectionX > 0.0f
+                                         ? wristAngle
+                                         : PI - wristAngle;
+    const float mirroredArtBarrelAngle =
+        facingDirectionX > 0.0f ? artBarrelAngle : PI - artBarrelAngle;
+    const float rotationDegrees =
+        (desiredBarrelAngle - mirroredArtBarrelAngle) * RAD2DEG;
+
+    Rectangle weaponSource = {
+        0.0f, 0.0f, static_cast<float>(weaponTexture.width),
+        static_cast<float>(weaponTexture.height)
+    };
+    if (facingDirectionX < 0.0f) {
+        weaponSource.x = static_cast<float>(weaponTexture.width);
+        weaponSource.width = -weaponSource.width;
+    }
+
+    Rectangle handDestination = {};
+    if (hasHandOverlay) {
+        const float handX = facingDirectionX > 0.0f
+                                ? handSource.x
+                                : static_cast<float>(characterTexture.width) -
+                                      handSource.x - handSource.width;
+        handDestination = {
+            characterDestination.x + handX * characterScale,
+            characterDestination.y + handSource.y * characterScale,
+            handSource.width * characterScale,
+            handSource.height * characterScale
+        };
+        if (facingDirectionX < 0.0f) {
+            handSource.x += handSource.width;
+            handSource.width = -handSource.width;
         }
+    }
 
-        const float drawHeight = bounds.height * texture.height / SPRITE_BASE_HEIGHT;
-        const float drawWidth = drawHeight * texture.width / texture.height;
+    const float localMuzzleY = muzzle.y * weaponScale;
+    const float muzzleOffsetX = localMuzzleX - localGripX;
+    const float muzzleOffsetY = localMuzzleY - gripY;
+    const float rotationRadians = rotationDegrees * DEG2RAD;
+    const float cosRotation = std::cos(rotationRadians);
+    const float sinRotation = std::sin(rotationRadians);
+    const Vector2 muzzlePosition = {
+        handPosition.x + muzzleOffsetX * cosRotation -
+            muzzleOffsetY * sinRotation,
+        handPosition.y + muzzleOffsetX * sinRotation +
+            muzzleOffsetY * cosRotation
+    };
+    const float directionAngle = desiredBarrelAngle;
+    const Vector2 muzzleDirection = {
+        std::cos(directionAngle), std::sin(directionAngle)
+    };
+    const Rectangle weaponDestination = {
+        handPosition.x, handPosition.y, weaponWidth, weaponHeight
+    };
+
+    return {
+        weaponSource,
+        weaponDestination,
+        handSource,
+        handDestination,
+        muzzlePosition,
+        muzzleDirection,
+        rotationDegrees,
+        hasHandOverlay
+    };
+}
+
+void Player::render(const WeaponVisualConfig* weaponVisual) const
+{
+    if (!alive) return;
+    if (isInvulnerable()) {
+        const int blink = static_cast<int>(invulnerableTimer * 10.0f);
+        if (blink % 2 == 0) return;
+    }
+
+    const AnimationSelection animation = getAnimationSelection();
+    const Texture2D& texture = *animation.texture;
+    const bool drawWeaponVisual =
+        weaponVisual != nullptr && weaponVisual->texture.id != 0 &&
+        animation.holdsWeapon;
+    WeaponRenderData weaponData = {};
+    Vector2 gripPivot = {};
+    if (drawWeaponVisual) {
+        weaponData = getWeaponRenderData(*weaponVisual, animation);
+        gripPivot = {
+            facingDirectionX > 0.0f
+                ? weaponVisual->gripRatio.x *
+                      weaponData.weaponDestination.width
+                : (1.0f - weaponVisual->gripRatio.x) *
+                      weaponData.weaponDestination.width,
+            weaponVisual->gripRatio.y *
+                weaponData.weaponDestination.height
+        };
+    }
+
+    const auto drawWeaponVisualLayer = [&]() {
+        DrawTexturePro(weaponVisual->texture, weaponData.weaponSource,
+                       weaponData.weaponDestination, gripPivot,
+                       weaponData.rotationDegrees, WHITE);
+    };
+
+    const bool drawBehindCharacter =
+        drawWeaponVisual &&
+        (weaponVisual->renderLayer == WeaponRenderLayer::BehindCharacter ||
+         (weaponVisual->renderLayer ==
+              WeaponRenderLayer::BehindCharacterWhenFacingLeft &&
+          facingDirectionX < 0.0f));
+    if (drawBehindCharacter) {
+        drawWeaponVisualLayer();
+    }
+
+    Rectangle destination = bounds;
+    if (texture.id == 0) {
+        DrawRectangleRec(bounds, color);
+    } else {
+        // Proporcional a 110 px: los sprites normales ocupan la hitbox entera
+        // y climb (más alto) sale más grande, con los brazos por encima.
+        const float drawHeight = bounds.height *
+                                 static_cast<float>(texture.height) /
+                                 SPRITE_BASE_HEIGHT;
+        const float drawWidth =
+            drawHeight * static_cast<float>(texture.width) /
+            static_cast<float>(texture.height);
         Rectangle source = {0.0f, 0.0f, static_cast<float>(texture.width),
                             static_cast<float>(texture.height)};
         if (facingDirectionX < 0.0f && state != PlayerState::CLIMBING) {
@@ -406,13 +635,26 @@ void Player::render() const
             source.width = -source.width;
         }
 
-        Rectangle destination = {
+        destination = {
             bounds.x + (bounds.width - drawWidth) / 2.0f,
             bounds.y + bounds.height - drawHeight,
             drawWidth,
             drawHeight
         };
         DrawTexturePro(texture, source, destination, {0.0f, 0.0f}, 0.0f, WHITE);
+    }
+
+    if (!drawWeaponVisual) {
+        return;
+    }
+
+    if (!drawBehindCharacter) {
+        drawWeaponVisualLayer();
+    }
+
+    if (weaponData.hasHandOverlay) {
+        DrawTexturePro(texture, weaponData.handSource,
+                       weaponData.handDestination, {0.0f, 0.0f}, 0.0f, WHITE);
     }
 }
 
@@ -425,6 +667,36 @@ Vector2 Player::getWeaponOrigin() const
 {
     float muzzleX = facingDirectionX > 0.0f ? bounds.x + bounds.width : bounds.x;
     return {muzzleX, bounds.y + bounds.height / 2.0f};
+}
+
+Vector2 Player::getAttachedWeaponOrigin(
+    const WeaponVisualConfig& weaponVisual) const
+{
+    if (weaponVisual.texture.id == 0 || weaponVisual.texture.width <= 0 ||
+        weaponVisual.texture.height <= 0) {
+        return getWeaponOrigin();
+    }
+
+    const AnimationSelection animation = getAnimationSelection();
+    if (!animation.holdsWeapon) {
+        return getWeaponOrigin();
+    }
+    return getWeaponRenderData(weaponVisual, animation).muzzlePosition;
+}
+
+Vector2 Player::getAttachedWeaponDirection(
+    const WeaponVisualConfig& weaponVisual) const
+{
+    if (weaponVisual.texture.id == 0 || weaponVisual.texture.width <= 0 ||
+        weaponVisual.texture.height <= 0) {
+        return getFacingDirection();
+    }
+
+    const AnimationSelection animation = getAnimationSelection();
+    if (!animation.holdsWeapon) {
+        return getFacingDirection();
+    }
+    return getWeaponRenderData(weaponVisual, animation).muzzleDirection;
 }
 
 bool Player::hasFallenOff(int screenHeight) const

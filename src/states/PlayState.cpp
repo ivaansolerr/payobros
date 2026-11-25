@@ -29,6 +29,39 @@ static void drawHealth(int x, int y, int health, int maxHealth,Color color){
 PlayState::PlayState(int numPlayers)
     : physicsWorld({0.0f, 9.8f}), numPlayers(numPlayers) {}
 
+PlayState::~PlayState()
+{
+  level.unload();
+  if (background.id != 0) {
+    UnloadTexture(background);
+  }
+  for (WeaponVisualEntry& entry : weaponVisuals) {
+    if (entry.visual.texture.id != 0) {
+      UnloadTexture(entry.visual.texture);
+    }
+  }
+}
+
+WeaponVisualConfig* PlayState::getWeaponVisual(WeaponType type)
+{
+  for (WeaponVisualEntry& entry : weaponVisuals) {
+    if (entry.type == type) {
+      return &entry.visual;
+    }
+  }
+  return nullptr;
+}
+
+const WeaponVisualConfig* PlayState::getWeaponVisual(WeaponType type) const
+{
+  for (const WeaponVisualEntry& entry : weaponVisuals) {
+    if (entry.type == type) {
+      return &entry.visual;
+    }
+  }
+  return nullptr;
+}
+
 void PlayState::init() {
 
   weapon1.clear();
@@ -41,6 +74,15 @@ void PlayState::init() {
   level.createPhysicsBodies(physicsWorld);
   if (background.id == 0) {
     background = LoadTexture("src/assets/backgrounds/bg_kitchen.png");
+  }
+  for (WeaponVisualEntry& entry : weaponVisuals) {
+    if (entry.visual.texture.id == 0) {
+      entry.visual.texture = LoadTexture(entry.visual.texturePath);
+      if (entry.visual.texture.id == 0) {
+        TraceLog(LOG_ERROR, "WEAPON: no se pudo cargar %s",
+                 entry.visual.texturePath);
+      }
+    }
   }
 
   SpawnPoint ps = level.getPlayerSpawn();
@@ -63,7 +105,7 @@ void PlayState::init() {
   enemies.clear();
   for (const SpawnPoint& sp : level.getEnemySpawns()) {
     Enemy e;
-    e.init(sp.x, sp.y, sp.width, sp.height);
+    e.init(sp.x, sp.y, sp.width, sp.height, sp.type);
     enemies.push_back(e);
   }
 
@@ -99,7 +141,7 @@ void PlayState::init() {
   camera.target = {player1.getBounds().x, 0.0f};
   camera.rotation = 0.0f;
   float scaleY = static_cast<float>(screenHeight) / 640.0f;
-  camera.zoom = scaleY > 0.0f ? scaleY : 1.0f;
+  camera.zoom = (scaleY > 0.0f ? scaleY : 1.0f) * baseZoomMultiplier;
 }
 
 void PlayState::handleInput() {
@@ -147,8 +189,16 @@ void PlayState::handleInput() {
       if (currentWeapon == WeaponType::Knife) {
         knife.handleInput();
       } else {
-        selectedWeapon->handleInput(player1.getWeaponOrigin(),
-                                    player1.getFacingDirection(), physicsWorld);
+        const WeaponVisualConfig* weaponVisual =
+            getWeaponVisual(currentWeapon);
+        const Vector2 weaponOrigin = weaponVisual != nullptr
+            ? player1.getAttachedWeaponOrigin(*weaponVisual)
+            : player1.getWeaponOrigin();
+        const Vector2 weaponDirection = weaponVisual != nullptr
+            ? player1.getAttachedWeaponDirection(*weaponVisual)
+            : player1.getFacingDirection();
+        selectedWeapon->handleInput(weaponOrigin,
+                                    weaponDirection, physicsWorld);
       }
     }
   } else {
@@ -322,7 +372,7 @@ void PlayState::update(float deltaTime) {
     }
 
     float scaleY = static_cast<float>(screenHeight) / (mapHeightPx > 0.0f ? mapHeightPx : 640.0f);
-    camera.zoom = scaleY > 0.0f ? scaleY : 1.0f;
+    camera.zoom = (scaleY > 0.0f ? scaleY : 1.0f) * baseZoomMultiplier;
     camera.offset = {static_cast<float>(screenWidth) / 2.0f, 0.0f};
 
     // Suavizado de cámara (lerp)
@@ -439,7 +489,7 @@ void PlayState::render() {
     }
   }
 
-  player1.render();
+  player1.render(getWeaponVisual(currentWeapon));
   if (numPlayers >= 2) {
     player2.render();
   }
