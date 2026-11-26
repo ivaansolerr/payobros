@@ -1,0 +1,12 @@
+Source: payobros
+Section: games
+Priority: optional
+Maintainer: Ivan Soler <ivansoler33@gmail.com>
+Build-Depends: debhelper-compat (= 13), g++, make, cmake, libasound2-dev, libx11-dev, libxrandr-dev, libxi-dev, libgl1-mesa-dev, libglu1-mesa-dev, libxcursor-dev, libxinerama-dev, libwayland-dev, libxkbcommon-dev
+Standards-Version: 4.6.2
+
+Package: payobros
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Juego de plataformas 2D hecho en C++ con Raylib y Box2D
+ Payobros es un juego de accion y plataformas en 2D desarrollado en C++17.

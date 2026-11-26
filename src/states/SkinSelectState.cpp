@@ -2,6 +2,7 @@
 #include "core/StateMachine.hpp"
 #include <algorithm>
 #include <string>
+#include "core/AssetManager.hpp"
 
 SkinSelectState::~SkinSelectState()
 {
@@ -22,8 +23,8 @@ void SkinSelectState::init()
         }
 
         const std::string path =
-            std::string("src/assets/characters/") + skin.folder + "/" +
-            skin.prefix + "_idle.png";
+            resolveAssetPath("src/assets/characters/") + skin.folder + "/" +
+                skin.prefix + "_idle.png";
         previews[i] = LoadTexture(path.c_str());
         if (previews[i].id == 0) {
             TraceLog(LOG_ERROR, "SKINS: no se pudo cargar la vista previa %s",

@@ -23,3 +23,23 @@ build/%.o: src/%.cpp
 
 clean:
 	rm -rf build $(TARGET)
+
+PREFIX ?= /usr
+DESTDIR ?=
+
+.PHONY: install
+install: $(TARGET)
+	install -d $(DESTDIR)$(PREFIX)/bin
+	install -m 755 $(TARGET) $(DESTDIR)$(PREFIX)/bin/payobros
+	install -d $(DESTDIR)$(PREFIX)/share/payobros
+	cp -r src/assets $(DESTDIR)$(PREFIX)/share/payobros/
+
+PREFIX ?= /usr
+DESTDIR ?=
+
+.PHONY: install
+install: $(TARGET)
+	install -d $(DESTDIR)$(PREFIX)/bin
+	install -m 755 $(TARGET) $(DESTDIR)$(PREFIX)/bin/payobros
+	install -d $(DESTDIR)$(PREFIX)/share/payobros
+	cp -r src/assets $(DESTDIR)$(PREFIX)/share/payobros/

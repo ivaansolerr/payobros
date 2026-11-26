@@ -3,6 +3,7 @@
 #include "PauseState.hpp"
 #include "core/StateMachine.hpp"
 #include <algorithm>
+#include "core/AssetManager.hpp"
 
 #define screenWidth GetScreenWidth()
 #define screenHeight GetScreenHeight()
@@ -70,11 +71,14 @@ void PlayState::init() {
   enemyWeapon.clear();
   level.clearPhysicsBodies(physicsWorld);
   physicsAccumulator = 0.0f;
-  level.load("src/assets/fondo.tmx");
+
+
+  level.load(resolveAssetPath("src/assets/fondo.tmx"));
   level.createPhysicsBodies(physicsWorld);
   if (background.id == 0) {
-    background = LoadTexture("src/assets/backgrounds/bg_kitchen.png");
+    background = LoadTexture(resolveAssetPath("src/assets/backgrounds/bg_kitchen.png").c_str());
   }
+
   for (WeaponVisualEntry& entry : weaponVisuals) {
     if (entry.visual.texture.id == 0) {
       entry.visual.texture = LoadTexture(entry.visual.texturePath);

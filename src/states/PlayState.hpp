@@ -9,6 +9,7 @@
 #include <box2d/box2d.h>
 #include <raylib.h>
 #include <vector>
+#include "core/AssetManager.hpp"
 
 // Arma que tiene equipada el jugador 1
 enum class WeaponType { Straight, Bouncing, Knife };
@@ -55,7 +56,7 @@ private:
     // Añadir aquí el arte y las proporciones; Player se ocupa del renderizado.
     std::vector<WeaponVisualEntry> weaponVisuals = {
         {WeaponType::Bouncing,
-         WeaponVisualConfig{"src/assets/weapons/bouncing_launcher.png", 0.45f}}
+         WeaponVisualConfig{resolveAssetPath("src/assets/weapons/bouncing_launcher.png").c_str(), 0.45f}}
     };
     Camera2D camera = { 0 }; // scroll lateral
     float baseZoomMultiplier = 1.25f; // > 1.0f acerca la cámara, < 1.0f la aleja

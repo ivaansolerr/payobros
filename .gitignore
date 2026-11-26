@@ -4,4 +4,4 @@ payobros.exe
 build/
 CMakeLists.txt
 raylib-5.0.zip
-__pycache__
+__pycache__*.deb

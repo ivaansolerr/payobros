@@ -1,0 +1,10 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@
+
+override_dh_auto_install:
+	$(MAKE) install DESTDIR=$(CURDIR)/debian/payobros PREFIX=/usr
+	mkdir -p $(CURDIR)/debian/payobros/usr/games
+	mv $(CURDIR)/debian/payobros/usr/bin/payobros $(CURDIR)/debian/payobros/usr/games/payobros
+	rmdir $(CURDIR)/debian/payobros/usr/bin

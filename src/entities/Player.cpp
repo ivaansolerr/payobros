@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cmath>
 #include <string>
+#include "core/AssetManager.hpp"
 
 namespace {
 constexpr const char* ANIMATION_POSES[] = {
@@ -56,7 +57,7 @@ void Player::loadAnimationTextures()
         getSelectedCharacterSkin());
     for (int i = 0; i < ANIMATION_FRAME_COUNT; ++i) {
         const std::string path =
-            std::string("src/assets/characters/") + skin.folder + "/" +
+            resolveAssetPath("src/assets/characters/") + skin.folder + "/" +
             skin.prefix + "_" + ANIMATION_POSES[i] + ".png";
         animationTextures[i] = LoadTexture(path.c_str());
         if (animationTextures[i].id == 0) {
@@ -69,7 +70,7 @@ void Player::loadAnimationTextures()
     hasRunCycle = true;
     for (int i = 0; i < RUN_FRAME_COUNT; ++i) {
         const std::string path =
-            std::string("src/assets/characters/") + skin.folder + "/" +
+            resolveAssetPath("src/assets/characters/") + skin.folder + "/" +
             skin.prefix + "_run" + std::to_string(i + 1) + ".png";
         if (!FileExists(path.c_str())) {
             hasRunCycle = false;
@@ -285,7 +286,7 @@ void Player::updateClimbing(float deltaTime)
         return;
     }
 
-    // Movimiento  sobre la cuerda
+    // Movimiento sobre la cuerda
     if (rope.length > 0.0f) {
         if (inputDirectionY > 0.0f) {
             // Subir activamente
