@@ -23,7 +23,7 @@ class PlayState : public GameState
 public:
     // explicit -> Evita conversiones implícitas
     // previene de cambios de estado implicitos indeseados al pasar parametros a stateMachine
-    explicit PlayState(int numPlayers = 1);
+    explicit PlayState(int numPlayers = 1, int level = 1);
     ~PlayState() override;
 
     void init() override;
@@ -38,6 +38,7 @@ private:
     b2World physicsWorld;
     float physicsAccumulator = 0.0f;
     int numPlayers = 1;
+    int currentLevel = 1;
 
     Player player1;
     Player player2;

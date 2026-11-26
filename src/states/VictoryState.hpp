@@ -4,7 +4,7 @@
 
 class VictoryState : public GameState {
 public:
-  VictoryState() = default;
+  explicit VictoryState(int level = 1, int numPlayers = 1);
   ~VictoryState() override = default;
 
   void init() override;
@@ -16,7 +16,14 @@ public:
   void resume() override {}
 
 private:
+  int currentLevel = 1;
+  int numPlayers = 1;
+
+  Rectangle nextButton = {};
   Rectangle menuButton = {};
+
+  bool nextHovered = false;
+  bool nextPressed = false;
   bool menuHovered = false;
   bool menuPressed = false;
 };

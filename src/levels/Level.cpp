@@ -84,7 +84,7 @@ static bool readTextFile(const string& path, string& out)
     return true;
 }
 
-bool Level::load(const string& tmxPath)
+bool Level::load(const string& tmxPath, int levelNumber)
 {
     unload();
 
@@ -201,8 +201,21 @@ bool Level::load(const string& tmxPath)
 
     enemySpawns.clear();
 
-    enemySpawns.push_back({1000.0f, 440.0f, 40.0f, 40.0f, EnemyType::Melee});
-    enemySpawns.push_back({2800.0f, 440.0f, 40.0f, 40.0f, EnemyType::Shooter});
+    if (levelNumber == 2) {
+        enemySpawns.push_back({600.0f, 440.0f, 40.0f, 40.0f, EnemyType::Melee});
+        enemySpawns.push_back({1350.0f, 440.0f, 40.0f, 40.0f, EnemyType::Shooter});
+        enemySpawns.push_back({2100.0f, 376.0f, 40.0f, 40.0f, EnemyType::Melee});
+        enemySpawns.push_back({2750.0f, 440.0f, 40.0f, 40.0f, EnemyType::Shooter});
+    } else if (levelNumber == 3) {
+        enemySpawns.push_back({750.0f, 440.0f, 40.0f, 40.0f, EnemyType::Melee});
+        enemySpawns.push_back({1380.0f, 376.0f, 40.0f, 40.0f, EnemyType::Shooter});
+        enemySpawns.push_back({1650.0f, 440.0f, 40.0f, 40.0f, EnemyType::Melee});
+        enemySpawns.push_back({2650.0f, 440.0f, 40.0f, 40.0f, EnemyType::Melee});
+        enemySpawns.push_back({2900.0f, 440.0f, 40.0f, 40.0f, EnemyType::Shooter});
+    } else {
+        enemySpawns.push_back({1000.0f, 440.0f, 40.0f, 40.0f, EnemyType::Melee});
+        enemySpawns.push_back({2800.0f, 440.0f, 40.0f, 40.0f, EnemyType::Shooter});
+    }
 
     return true;
 }

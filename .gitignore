@@ -5,3 +5,4 @@ build/
 CMakeLists.txt
 raylib-5.0.zip
 __pycache__
+progress.dat
