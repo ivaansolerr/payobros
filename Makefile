@@ -8,6 +8,10 @@ INCLUDES := $(shell find src -type d -exec echo -I{} \;) -Ivendor/include
 SRCS := $(shell find src -type f -name '*.cpp')
 OBJS := $(patsubst src/%.cpp, build/%.o, $(SRCS))
 
+DEPS := $(OBJS:.o=.d)
+
+-include $(DEPS)
+
 TARGET := game
 
 .PHONY: all clean
